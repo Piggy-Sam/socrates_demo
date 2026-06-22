@@ -1,5 +1,4 @@
-import { DotMatrix } from "@/components/decor/dot-matrix";
-import { BustField } from "@/components/brand/bust-field";
+import { LandingField } from "@/components/decor/landing-field";
 import { Wordmark } from "@/components/brand/wordmark";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { LinkButton } from "@/components/ui/button";
@@ -24,12 +23,14 @@ const PRINCIPLES = [
 
 export default function Home() {
   return (
-    <main className="relative flex min-h-dvh flex-col">
-      {/* the living dot-matrix — the one decorative language */}
+    <main className="relative flex flex-col">
+      {/* one unified field: ambient dots + the face emerging at #hero-face */}
       <div className="fixed inset-0 -z-10">
-        <DotMatrix />
+        <LandingField faceId="hero-face" />
       </div>
 
+      {/* first screen — fills the viewport so the section below stays below the fold */}
+      <div className="flex min-h-dvh flex-col">
       {/* nav */}
       <header className="flex items-center justify-between px-6 py-5 sm:px-10">
         <Wordmark size="sm" />
@@ -43,13 +44,12 @@ export default function Home() {
 
       {/* hero — the living face (left), the wordmark + tagline + actions (right) */}
       <section className="grid flex-1 items-center gap-6 px-6 py-10 lg:grid-cols-2 lg:gap-10 lg:px-16">
-        <div className="relative order-1 h-[42vh] min-h-[300px] lg:h-[74vh]">
-          <BustField
-            morph
-            interactive
-            className="pointer-events-none absolute inset-0"
-          />
-        </div>
+        {/* spacer — the unified field draws the emerging face into this box */}
+        <div
+          id="hero-face"
+          aria-hidden
+          className="order-1 h-[48vh] min-h-[330px] lg:h-[80vh]"
+        />
 
         <div className="order-2 flex flex-col items-center text-center lg:items-start lg:text-left">
           <p className="label-mono mb-7 flex items-center gap-2 animate-[fade-rise_0.7s_var(--ease-instrument)_both]">
@@ -61,9 +61,13 @@ export default function Home() {
             <Wordmark size="xl" href={null} withStar={false} />
           </div>
 
-          <h1 className="mt-9 max-w-md font-display text-2xl font-light leading-snug tracking-tight text-balance text-marble-dim sm:text-3xl">
-            It doesn&apos;t hand you answers.{" "}
-            <span className="text-marble">It sharpens your own.</span>
+          <h1 className="mt-9 font-display text-xl font-light leading-relaxed tracking-tight text-marble-dim sm:text-[1.7rem]">
+            <span className="block whitespace-nowrap">
+              It doesn&apos;t hand you answers.
+            </span>
+            <span className="block whitespace-nowrap text-marble">
+              It sharpens your own.
+            </span>
           </h1>
 
           <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row">
@@ -76,9 +80,10 @@ export default function Home() {
           </div>
         </div>
       </section>
+      </div>
 
       {/* what it is — the moved description + three principles */}
-      <section className="border-t border-hairline bg-ink/70 px-6 py-16 backdrop-blur-sm sm:px-10">
+      <section className="border-y border-hairline bg-ink/70 px-6 py-16 backdrop-blur-sm sm:px-10">
         <div className="mx-auto max-w-5xl">
           <p className="max-w-2xl font-sans text-lg leading-relaxed text-marble text-pretty">
             A thinking instrument modeled on the Socratic method — it draws out
