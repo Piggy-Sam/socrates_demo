@@ -1,66 +1,76 @@
 import Link from "next/link";
+import { BustMark } from "./bust-mark";
 
-/** The star ident — a small gold point of light, the lamp of inquiry. */
+/** A tiny dot-cluster glyph — Socrates' mark in miniature (echoes the bust). */
 export function StarMark({
   className = "",
-  size = 18,
+  size = 14,
 }: {
   className?: string;
   size?: number;
 }) {
   return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 10 10"
+      fill="currentColor"
+      aria-hidden
+      className={className}
+      style={{ color: "var(--accent)" }}
+    >
+      <circle cx="3" cy="3" r="1.6" />
+      <circle cx="7" cy="3" r="1.1" />
+      <circle cx="3" cy="7" r="1.1" />
+      <circle cx="7" cy="7" r="1.6" />
+    </svg>
+  );
+}
+
+/** The blinking terminal block cursor. */
+export function BlinkCursor({ className = "" }: { className?: string }) {
+  return (
     <span
       aria-hidden
-      className={`relative inline-block ${className}`}
-      style={{ width: size, height: size }}
-    >
-      <span
-        className="absolute inset-0 rounded-full"
-        style={{
-          background:
-            "radial-gradient(circle at 40% 35%, var(--gold-lit), var(--gold) 60%, transparent 72%)",
-          boxShadow: "0 0 10px 1px rgb(var(--star-glow) / 0.6)",
-        }}
-      />
-    </span>
+      className={`cursor-blink ml-1 inline-block align-[-0.08em] ${className}`}
+      style={{ width: "0.5em", height: "0.95em" }}
+    />
   );
 }
 
 type Props = {
   className?: string;
-  /** size of the brand text */
   size?: "sm" | "md" | "lg";
   href?: string | null;
+  /** show the bust mark (kept name for back-compat with existing callers) */
   withStar?: boolean;
 };
 
-const SIZES = {
-  sm: "text-lg",
-  md: "text-2xl",
-  lg: "text-4xl sm:text-5xl",
+const TEXT = {
+  sm: "text-sm",
+  md: "text-lg",
+  lg: "text-2xl sm:text-3xl",
 } as const;
 
-/** Socrates wordmark — Fraunces, optical, with the gold star ident. */
+const MARK = { sm: 18, md: 24, lg: 40 } as const;
+
+/** Socrates AI wordmark — dot-matrix bust + SOCRATES in Plex Mono caps + cursor. */
 export function Wordmark({
   className = "",
   size = "md",
   href = "/",
   withStar = true,
-  ...rest
-}: Props & React.HTMLAttributes<HTMLElement>) {
+}: Props) {
   const inner = (
-    <span
-      className={`inline-flex items-baseline gap-2 font-display font-medium tracking-tight text-marble ${SIZES[size]} ${className}`}
-      {...rest}
-    >
+    <span className={`inline-flex items-center gap-2.5 ${className}`}>
       {withStar && (
-        <StarMark
-          size={size === "lg" ? 16 : size === "md" ? 11 : 9}
-          className="self-center"
-        />
+        <BustMark size={MARK[size]} className="shrink-0 text-marble" />
       )}
-      <span>
-        Socrates<span className="text-gold"> AI</span>
+      <span
+        className={`inline-flex items-center font-mono-display font-medium uppercase tracking-[0.2em] text-marble ${TEXT[size]}`}
+      >
+        Socrates
+        <BlinkCursor />
       </span>
     </span>
   );
@@ -70,7 +80,7 @@ export function Wordmark({
     <Link
       href={href}
       aria-label="Socrates AI — home"
-      className="rounded-sm outline-none transition-opacity hover:opacity-90"
+      className="inline-flex rounded-sm outline-none transition-opacity hover:opacity-80"
     >
       {inner}
     </Link>

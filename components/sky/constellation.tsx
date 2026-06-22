@@ -15,20 +15,25 @@ type Props = {
   selectedId?: string | null;
   onSelect?: (star: SkyStar) => void;
   className?: string;
-  /** seconds the whole sky takes to ignite */
+  /** seconds the whole field takes to resolve in */
   igniteDuration?: number;
   /** false = ambient backdrop: not focusable, no tooltips, no hover dimming */
   interactive?: boolean;
-  /** show the bordered/rounded sky frame (off for full-bleed backdrops) */
+  /** show the bordered readout panel (off for full-bleed backdrops) */
   framed?: boolean;
 };
 
+/**
+ * The dot-matrix field — your bank as a precise plotted field. Each thought is
+ * a dot; recurring themes draw hairline rules between them; the field grows
+ * over time (positions are stable per entry id). Echoes the bust + the orb.
+ */
 export function Constellation({
   stars,
   selectedId,
   onSelect,
   className = "",
-  igniteDuration = 1.6,
+  igniteDuration = 1.4,
   interactive = true,
   framed = true,
 }: Props) {
@@ -37,10 +42,7 @@ export function Constellation({
 
   const placed = useMemo(() => layoutStars(stars), [stars]);
   const links = useMemo(() => themeLinks(placed), [placed]);
-  const byId = useMemo(
-    () => new Map(placed.map((s) => [s.id, s])),
-    [placed],
-  );
+  const byId = useMemo(() => new Map(placed.map((s) => [s.id, s])), [placed]);
 
   const active = hovered ?? selectedId ?? null;
   const activeThemes = useMemo(() => {
@@ -54,14 +56,14 @@ export function Constellation({
     <div
       className={`relative isolate size-full overflow-hidden ${
         framed
-          ? "aspect-[16/10] rounded-lg border border-hairline bg-raised-2/40"
+          ? "aspect-[16/10] rounded-md border border-hairline bg-raised"
           : ""
       } ${className}`}
       role={interactive ? "group" : undefined}
-      aria-label={interactive ? "The constellation of your mind" : undefined}
+      aria-label={interactive ? "The field of your thinking" : undefined}
       aria-hidden={!interactive}
     >
-      {/* line layer — themes drawing constellations */}
+      {/* hairline rules between thematically linked dots */}
       <svg
         className="absolute inset-0 size-full"
         viewBox="0 0 100 100"
@@ -80,25 +82,26 @@ export function Constellation({
               y1={a.y}
               x2={b.x}
               y2={b.y}
-              stroke="rgb(var(--constellation-line))"
-              strokeWidth={lit ? 0.35 : 0.18}
+              stroke={
+                lit
+                  ? "rgb(var(--accent-rgb))"
+                  : "var(--color-hairline-strong)"
+              }
+              strokeWidth={lit ? 0.5 : 0.3}
               strokeLinecap="round"
               vectorEffect="non-scaling-stroke"
               initial={reduce ? false : { pathLength: 0, opacity: 0 }}
-              animate={{
-                pathLength: 1,
-                opacity: lit ? 0.7 : 0.22,
-              }}
+              animate={{ pathLength: 1, opacity: lit ? 0.9 : 0.4 }}
               transition={
                 reduce
                   ? { duration: 0 }
                   : {
                       pathLength: {
-                        delay: igniteDuration * 0.5 + i * 0.04,
-                        duration: 0.7,
+                        delay: igniteDuration * 0.45 + i * 0.03,
+                        duration: 0.5,
                         ease: [0.2, 0.8, 0.2, 1],
                       },
-                      opacity: { duration: 0.4 },
+                      opacity: { duration: 0.3 },
                     }
               }
             />
@@ -106,13 +109,12 @@ export function Constellation({
         })}
       </svg>
 
-      {/* star layer */}
+      {/* dot layer */}
       {placed.map((s, i) => {
         const related =
-          active === s.id ||
-          (s.themes ?? []).some((t) => activeThemes.has(t));
+          active === s.id || (s.themes ?? []).some((t) => activeThemes.has(t));
         return (
-          <Star
+          <Dot
             key={s.id}
             star={s}
             index={i}
@@ -130,7 +132,7 @@ export function Constellation({
   );
 }
 
-function Star({
+function Dot({
   star,
   index,
   stagger,
@@ -151,14 +153,13 @@ function Star({
   onHover: (id: string | null) => void;
   onSelect?: (star: SkyStar) => void;
 }) {
-  // px size from magnitude; active gets a gentle bump
-  const base = 4 + star.mag * 7;
-  const size = isActive ? base * 1.5 : base;
-  const opacity = isDimmed ? 0.3 : 0.5 + star.mag * 0.5;
+  const base = 4 + star.mag * 6;
+  const sizePx = isActive ? base * 1.6 : base;
+  const opacity = isDimmed ? 0.28 : 0.45 + star.mag * 0.5;
   const tooltipFlipX = star.x > 62;
-  const tooltipFlipY = star.y < 22;
+  const tooltipFlipY = star.y < 24;
 
-  const Tag: React.ElementType = interactive ? motion.button : motion.span;
+  const Tag = interactive ? motion.button : motion.span;
 
   return (
     <Tag
@@ -182,54 +183,36 @@ function Star({
       transition={
         reduce
           ? { duration: 0 }
-          : {
-              delay: index * stagger,
-              duration: 0.6,
-              ease: [0.2, 0.8, 0.2, 1],
-            }
+          : { delay: index * stagger, duration: 0.5, ease: [0.2, 0.8, 0.2, 1] }
       }
     >
-      {/* glow */}
-      <span
-        aria-hidden
-        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full transition-opacity duration-300"
-        style={{
-          width: size * 3.2,
-          height: size * 3.2,
-          background:
-            "radial-gradient(circle, rgb(var(--star-glow) / 0.55), transparent 70%)",
-          opacity: isActive ? 1 : 0.5,
-        }}
-      />
-      {/* core */}
       <span
         aria-hidden
         className="block rounded-full transition-all duration-300"
         style={{
-          width: size,
-          height: size,
+          width: sizePx,
+          height: sizePx,
           background: isActive
-            ? "var(--gold-lit)"
-            : "color-mix(in oklab, var(--gold) 75%, var(--marble))",
+            ? "var(--accent)"
+            : "rgb(var(--dot) / 0.9)",
           boxShadow: isActive
-            ? "0 0 12px 2px rgb(var(--star-glow) / 0.8)"
-            : "0 0 6px 0 rgb(var(--star-glow) / 0.4)",
+            ? "0 0 0 3px rgb(var(--accent-rgb) / 0.18)"
+            : "none",
         }}
       />
 
-      {/* readout — the instrument's label, on hover/focus */}
       {interactive && (
         <span
           role="tooltip"
-          className={`pointer-events-none absolute z-20 w-52 max-w-[60vw] rounded-md border border-hairline-strong bg-raised/95 p-3 opacity-0 shadow-xl backdrop-blur-sm transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100 ${
+          className={`pointer-events-none absolute z-20 w-52 max-w-[60vw] rounded-md border border-hairline-strong bg-raised p-3 opacity-0 shadow-xl transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100 ${
             tooltipFlipX ? "right-3" : "left-3"
           } ${tooltipFlipY ? "top-3" : "bottom-3"}`}
         >
-          <span className="label-mono flex items-center gap-1.5">
+          <span className="label-mono flex items-center gap-1.5 text-accent">
             <span aria-hidden>{TYPE_GLYPH[star.type]}</span>
             {star.type}
           </span>
-          <span className="mt-1.5 block font-serif text-sm leading-snug text-marble text-pretty">
+          <span className="mt-1.5 block font-sans text-sm leading-snug text-marble text-pretty">
             {star.content.length > 120
               ? star.content.slice(0, 120) + "…"
               : star.content}
