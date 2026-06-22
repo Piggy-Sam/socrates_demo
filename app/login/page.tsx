@@ -1,0 +1,198 @@
+"use client";
+
+import { Suspense, useState, type FormEvent } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { motion, useReducedMotion } from "motion/react";
+import { ArrowLeft, Mail } from "lucide-react";
+import { Constellation } from "@/components/sky/constellation";
+import { Wordmark } from "@/components/brand/wordmark";
+import { Button } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase/client";
+import { SAMPLE_SKY } from "@/lib/sample-sky";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function LoginInner() {
+  const params = useSearchParams();
+  const next = params.get("next") || "/today";
+  const authError = params.get("error");
+  const reduce = useReducedMotion();
+
+  const [email, setEmail] = useState("");
+  const [status, setStatus] = useState<"idle" | "sending" | "sent">("idle");
+  const [error, setError] = useState<string | null>(
+    authError ? "That link didn't work. Let's try again." : null,
+  );
+
+  async function onSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const value = email.trim();
+    if (!EMAIL_RE.test(value)) {
+      setError("That doesn't look like an email yet.");
+      return;
+    }
+
+    setError(null);
+    setStatus("sending");
+
+    const supabase = createClient();
+    const redirectTo = `${location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
+    const { error: otpError } = await supabase.auth.signInWithOtp({
+      email: value,
+      options: { emailRedirectTo: redirectTo },
+    });
+
+    if (otpError) {
+      setStatus("idle");
+      setError("Something went wrong sending the link. Try once more?");
+      return;
+    }
+
+    setStatus("sent");
+  }
+
+  return (
+    <main className="relative flex min-h-dvh flex-col items-center justify-center px-6 py-16">
+      {/* ambient night sky, dimmed and behind everything */}
+      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+        <Constellation
+          stars={SAMPLE_SKY}
+          interactive={false}
+          framed={false}
+          igniteDuration={2.6}
+          className="opacity-40"
+        />
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(ellipse 65% 60% at 50% 45%, transparent 25%, var(--ink) 88%)",
+          }}
+        />
+      </div>
+
+      <motion.div
+        initial={reduce ? false : { opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.7, ease: [0.2, 0.8, 0.2, 1] }}
+        className="w-full max-w-sm"
+      >
+        <div className="flex flex-col items-center text-center">
+          <Wordmark size="md" href="/" />
+
+          {status === "sent" ? (
+            <Sent email={email.trim()} />
+          ) : (
+            <>
+              <p className="mt-9 max-w-xs font-serif text-lg leading-relaxed text-marble text-pretty">
+                Tell me where to reach you, and we'll begin.
+              </p>
+
+              <form onSubmit={onSubmit} className="mt-9 w-full">
+                <label
+                  htmlFor="email"
+                  className="label-mono mb-2 block text-left"
+                >
+                  Your email
+                </label>
+                <div className="relative">
+                  <Mail
+                    aria-hidden
+                    strokeWidth={1.6}
+                    className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-marble-dim"
+                  />
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    autoFocus
+                    inputMode="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (error) setError(null);
+                    }}
+                    disabled={status === "sending"}
+                    className="h-11 w-full rounded-sm border border-hairline-strong bg-raised/60 pl-10 pr-3.5 font-sans text-sm text-marble outline-none transition-colors duration-200 placeholder:text-marble-dim/60 hover:border-gold/40 focus:border-gold disabled:opacity-50"
+                  />
+                </div>
+
+                {error && (
+                  <p
+                    role="alert"
+                    className="mt-2.5 text-left font-sans text-sm text-marble-dim"
+                  >
+                    {error}
+                  </p>
+                )}
+
+                <Button
+                  type="submit"
+                  variant="gold"
+                  size="lg"
+                  disabled={status === "sending"}
+                  className="mt-5 w-full"
+                >
+                  {status === "sending" ? "Sending…" : "Send me a link"}
+                </Button>
+              </form>
+
+              <p className="mt-6 font-sans text-xs leading-relaxed text-marble-dim">
+                No password. We'll email you a link that signs you in.
+              </p>
+            </>
+          )}
+        </div>
+      </motion.div>
+
+      <Link
+        href="/"
+        className="absolute left-6 top-6 inline-flex items-center gap-1.5 rounded-sm font-sans text-sm text-marble-dim transition-colors hover:text-marble sm:left-10 sm:top-8"
+      >
+        <ArrowLeft strokeWidth={1.6} className="size-4" />
+        Back
+      </Link>
+    </main>
+  );
+}
+
+function Sent({ email }: { email: string }) {
+  const reduce = useReducedMotion();
+  return (
+    <motion.div
+      initial={reduce ? false : { opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: [0.2, 0.8, 0.2, 1] }}
+      className="mt-9 flex flex-col items-center"
+    >
+      <span
+        aria-hidden
+        className="glow-gold flex size-11 items-center justify-center rounded-full border border-gold/40 text-gold"
+      >
+        <Mail strokeWidth={1.6} className="size-5" />
+      </span>
+      <p className="mt-6 max-w-xs font-serif text-lg leading-relaxed text-marble text-pretty">
+        Check your email — a link is on its way.
+      </p>
+      {email && (
+        <p className="mt-2 font-mono text-xs tracking-wide text-marble-dim">
+          {email}
+        </p>
+      )}
+      <p className="mt-6 font-sans text-xs leading-relaxed text-marble-dim">
+        It can take a minute. You can close this tab once you've opened the link.
+      </p>
+    </motion.div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginInner />
+    </Suspense>
+  );
+}
