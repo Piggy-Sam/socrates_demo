@@ -110,9 +110,9 @@ export const entries = pgTable(
   },
   (t) => [
     index("entries_user_created_idx").on(t.userId, t.createdAt),
-    // ANN index for RAG; ivfflat over cosine distance
+    // ANN index for RAG; hnsw over cosine distance (no training data needed)
     index("entries_embedding_idx").using(
-      "ivfflat",
+      "hnsw",
       t.embedding.op("vector_cosine_ops"),
     ),
   ],
