@@ -1,8 +1,8 @@
 // A tiny, dependency-free markdown renderer for daily/weekly summaries. We only
 // support the restrained subset Socrates' summaries use — paragraphs, headings,
 // bullet/numbered lists, **bold**, *italic*, and `code` — and we never render
-// raw HTML. The body is set in the serif so the bank reads like a commonplace
-// book, not a feed.
+// raw HTML. The body is set in Geist so the bank reads like a commonplace book,
+// not a feed; headings and metadata carry the Plex Mono instrument register.
 
 import { Fragment } from "react";
 
@@ -28,7 +28,7 @@ function renderInline(text: string, keyBase: string): React.ReactNode[] {
       return (
         <code
           key={key}
-          className="rounded-sm bg-raised-2 px-1 py-0.5 font-mono text-[0.85em] text-cyan"
+          className="rounded-sm bg-raised-2 px-1 py-0.5 font-mono text-[0.85em] text-accent"
         >
           {tok.slice(1, -1)}
         </code>
@@ -136,7 +136,7 @@ export function SummaryMarkdown({ content, className = "" }: Props) {
 
   return (
     <div
-      className={`space-y-3 font-serif text-[15px] leading-relaxed text-marble text-pretty ${className}`}
+      className={`space-y-3 font-sans text-[15px] leading-relaxed text-marble text-pretty ${className}`}
     >
       {blocks.map((b, i) => {
         const key = `b-${i}`;
@@ -154,7 +154,7 @@ export function SummaryMarkdown({ content, className = "" }: Props) {
         }
         if (b.kind === "ul") {
           return (
-            <ul key={key} className="list-disc space-y-1.5 pl-5 marker:text-cyan">
+            <ul key={key} className="list-disc space-y-1.5 pl-5 marker:text-accent">
               {b.items.map((it, j) => (
                 <li key={`${key}-${j}`}>{renderInline(it, `${key}-${j}`)}</li>
               ))}
@@ -165,7 +165,7 @@ export function SummaryMarkdown({ content, className = "" }: Props) {
           return (
             <ol
               key={key}
-              className="list-decimal space-y-1.5 pl-5 marker:font-mono marker:text-cyan"
+              className="list-decimal space-y-1.5 pl-5 marker:font-mono marker:text-accent"
             >
               {b.items.map((it, j) => (
                 <li key={`${key}-${j}`}>{renderInline(it, `${key}-${j}`)}</li>

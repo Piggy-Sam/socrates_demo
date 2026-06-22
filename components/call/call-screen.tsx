@@ -10,10 +10,12 @@ import { useSocratesCall, type CallPhase } from "./use-socrates-call";
 type Props = { displayName: string };
 
 /**
- * The on-demand call surface. MOBILE-FIRST (full-bleed Aegean-night field, the
- * breathing star large and centered as Socrates' presence, big thumb-reachable
- * controls), scaling up gracefully to desktop. Gold is rationed: it is the star
- * and the single "Talk to Socrates" action — nothing else.
+ * The on-demand voice surface. MOBILE-FIRST (full-bleed paper field, the
+ * dot-orb large and centered as Socrates' presence, big thumb-reachable
+ * controls), scaling up gracefully to desktop. Voice is one instrument among
+ * several — kept calm and functional, not a spectacle. The single blue accent
+ * is rationed: it is the orb and the one "Talk to Socrates" action — nothing
+ * else.
  *
  * useConversation requires a ConversationProvider ancestor, so we mount one here
  * and keep the actual UI/logic in the inner component.
@@ -61,33 +63,35 @@ function CallSurface({ displayName }: Props) {
   const firstName = displayName.trim().split(/\s+/)[0] || "friend";
 
   return (
-    <div className="grain relative flex min-h-dvh flex-col items-center justify-between overflow-hidden bg-ink px-6 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(2rem,env(safe-area-inset-top))]">
-      {/* ambient field — a faint vertical gradient deepens the night */}
+    <div className="relative flex min-h-dvh flex-col items-center justify-between overflow-hidden bg-ink px-6 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(2rem,env(safe-area-inset-top))]">
+      {/* ambient field — a faint dot-grid, like graph paper for the instrument */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"
         style={{
-          background:
-            "radial-gradient(120% 70% at 50% 38%, rgb(var(--star-glow) / 0.06) 0%, transparent 60%)",
+          backgroundImage:
+            "radial-gradient(var(--grid-line) 1px, transparent 1px)",
+          backgroundSize: "22px 22px",
+          backgroundPosition: "center",
         }}
       />
 
-      {/* top: a quiet mono readout — who's present, no chrome */}
+      {/* top: a quiet mono readout — the instrument, in voice */}
       <header className="relative z-10 flex w-full max-w-md flex-col items-center pt-4 text-center">
-        <span className="label-mono">on-demand · voice</span>
+        <span className="label-mono">&rsaquo; voice &middot; one instrument of many</span>
       </header>
 
-      {/* center: Socrates' presence */}
+      {/* center: Socrates' presence — the dot-orb */}
       <main className="relative z-10 flex flex-1 flex-col items-center justify-center gap-10">
-        <StarHalo>
+        <div className="grid place-items-center">
           <BreathingStar state={starState} size={220} />
-        </StarHalo>
+        </div>
 
         {/* status line — the single source of truth for what's happening */}
         <StatusLine phase={phase} starState={starState} firstName={firstName} />
       </main>
 
-      {/* live captions — minimal, the latest turn only, in serif */}
+      {/* live captions — minimal, the latest turn only, in Geist */}
       <section className="relative z-10 flex min-h-[3.5rem] w-full max-w-md items-end justify-center px-2">
         <AnimatePresence mode="wait">
           {isActive && lastMessage ? (
@@ -97,7 +101,7 @@ function CallSurface({ displayName }: Props) {
               animate={{ opacity: 1, y: 0 }}
               exit={reduce ? undefined : { opacity: 0, y: -6 }}
               transition={{ duration: 0.4, ease: [0.2, 0.8, 0.2, 1] }}
-              className={`text-pretty text-center font-serif text-lg leading-snug ${
+              className={`text-pretty text-center font-sans text-lg leading-snug ${
                 lastMessage.role === "socrates"
                   ? "text-marble"
                   : "text-marble-dim"
@@ -135,16 +139,6 @@ function CallSurface({ displayName }: Props) {
   );
 }
 
-/** Wraps the star so the glow can bleed without clipping. */
-function StarHalo({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="relative grid place-items-center">
-      <div className="absolute -z-10 h-[420px] w-[420px] rounded-full" />
-      {children}
-    </div>
-  );
-}
-
 function StatusLine({
   phase,
   starState,
@@ -169,7 +163,7 @@ function StatusLine({
         {label}
       </span>
       {phase === "idle" ? (
-        <p className="text-pretty font-serif text-xl text-marble-dim">
+        <p className="text-pretty font-sans text-xl text-marble-dim">
           What&rsquo;s on your mind, {firstName}?
         </p>
       ) : null}
@@ -197,7 +191,7 @@ function StartControl({
       type="button"
       onClick={onStart}
       disabled={connecting}
-      className="flex h-14 w-full max-w-xs items-center justify-center rounded-md bg-gold px-8 font-sans text-base font-medium text-ink shadow-[0_0_32px_-6px_rgb(var(--star-glow)/0.7)] transition-all duration-200 ease-[cubic-bezier(0.2,0.8,0.2,1)] hover:bg-gold-lit active:translate-y-px disabled:opacity-60 disabled:pointer-events-none"
+      className="flex h-14 w-full max-w-xs items-center justify-center rounded-md bg-accent px-8 font-sans text-base font-medium text-white transition-all duration-200 ease-[cubic-bezier(0.2,0.8,0.2,1)] hover:bg-accent-strong active:translate-y-px disabled:opacity-60 disabled:pointer-events-none"
     >
       {connecting ? "connecting…" : label}
     </button>
@@ -254,10 +248,10 @@ function RoundControl({
 }) {
   const tone =
     variant === "end"
-      ? "border-hairline-strong text-marble hover:border-gold hover:text-gold"
+      ? "border-hairline-strong text-marble hover:border-marble hover:bg-raised-2"
       : active
-        ? "border-gold/60 bg-raised-2 text-gold"
-        : "border-hairline-strong text-marble hover:border-hairline-strong hover:text-marble hover:bg-raised";
+        ? "border-accent bg-accent/10 text-accent"
+        : "border-hairline-strong text-marble hover:border-marble hover:bg-raised-2";
 
   return (
     <button
@@ -266,7 +260,7 @@ function RoundControl({
       aria-pressed={variant === "default" ? active : undefined}
       onClick={onClick}
       disabled={disabled}
-      className={`grid size-16 place-items-center rounded-full border bg-raised/60 backdrop-blur-sm transition-all duration-200 ease-[cubic-bezier(0.2,0.8,0.2,1)] active:translate-y-px disabled:opacity-50 disabled:pointer-events-none ${tone}`}
+      className={`grid size-16 place-items-center rounded-full border bg-raised transition-all duration-200 ease-[cubic-bezier(0.2,0.8,0.2,1)] active:translate-y-px disabled:opacity-50 disabled:pointer-events-none ${tone}`}
     >
       {children}
     </button>

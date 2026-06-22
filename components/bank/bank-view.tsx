@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search, Sparkles, List, X } from "lucide-react";
+import { Search, Grid3x3, List, X } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Constellation } from "@/components/sky/constellation";
 import {
@@ -24,7 +24,7 @@ export type BankTheme = {
   entryCount: number;
 };
 
-type Mode = "sky" | "list";
+type Mode = "field" | "list";
 
 function timeReadout(iso: string): string {
   return new Date(iso)
@@ -56,8 +56,8 @@ function dayLabel(iso: string): string {
     .toUpperCase();
 }
 
-// Brightness from recency × theme recurrence — recent and recurring thoughts
-// shine brighter. Structural, not decorative.
+// Weight from recency × theme recurrence — recent and recurring thoughts plot
+// larger and brighter. Structural, not decorative.
 function computeStars(entries: BankEntry[]): SkyStar[] {
   if (entries.length === 0) return [];
   const times = entries.map((e) => new Date(e.createdAt).getTime());
@@ -101,7 +101,7 @@ export function BankView({
   themes: BankTheme[];
 }) {
   const reduce = useReducedMotion();
-  const [mode, setMode] = useState<Mode>("sky");
+  const [mode, setMode] = useState<Mode>("field");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
 
@@ -138,9 +138,10 @@ export function BankView({
   if (entries.length === 0) {
     return (
       <div className="border-t border-hairline py-16">
-        <p className="max-w-md font-serif text-lg leading-relaxed text-marble-dim text-pretty">
+        <p className="max-w-md font-sans text-lg leading-relaxed text-marble-dim text-pretty">
           Nothing here yet. The first time we talk, each thought you work out
-          becomes a star — and over time, your sky fills in.
+          becomes a point in the field — and over time, the pattern of your mind
+          emerges.
         </p>
       </div>
     );
@@ -153,13 +154,13 @@ export function BankView({
         <div
           className="inline-flex rounded-md border border-hairline p-0.5"
           role="tablist"
-          aria-label="View the bank as a sky or a list"
+          aria-label="View the bank as a field or a list"
         >
           <ToggleButton
-            active={mode === "sky"}
-            onClick={() => setMode("sky")}
-            icon={<Sparkles className="size-3.5" strokeWidth={1.6} />}
-            label="sky"
+            active={mode === "field"}
+            onClick={() => setMode("field")}
+            icon={<Grid3x3 className="size-3.5" strokeWidth={1.6} />}
+            label="field"
           />
           <ToggleButton
             active={mode === "list"}
@@ -169,10 +170,10 @@ export function BankView({
           />
         </div>
         {/* no tally — the bank is not a scoreboard (SPEC §9 anti-metric law) */}
-        <span className="label-mono text-marble-dim">your sky</span>
+        <span className="label-mono text-marble-dim">the field</span>
       </div>
 
-      {mode === "sky" ? (
+      {mode === "field" ? (
         <div className="mt-6">
           <Constellation
             stars={stars}
@@ -187,7 +188,7 @@ export function BankView({
                 animate={{ opacity: 1, y: 0 }}
                 exit={reduce ? undefined : { opacity: 0, y: -6 }}
                 transition={{ duration: 0.25, ease: [0.2, 0.8, 0.2, 1] }}
-                className="mt-5 rounded-lg border border-hairline-strong bg-raised p-5"
+                className="mt-5 rounded-md border border-hairline bg-raised p-5"
               >
                 <div className="flex items-start justify-between gap-4">
                   <p className="label-mono flex items-center gap-1.5">
@@ -203,7 +204,7 @@ export function BankView({
                     <X className="size-4" strokeWidth={1.6} />
                   </button>
                 </div>
-                <p className="mt-3 font-serif text-xl leading-relaxed text-marble text-pretty">
+                <p className="mt-3 font-sans text-xl leading-relaxed text-marble text-pretty">
                   {selected.content}
                 </p>
                 {selected.themes?.length ? (
@@ -211,7 +212,7 @@ export function BankView({
                     {selected.themes.map((t) => (
                       <span
                         key={t}
-                        className="rounded-sm border border-hairline px-2 py-0.5 font-mono text-xs tracking-wide text-cyan"
+                        className="rounded-sm border border-hairline px-2 py-0.5 font-mono-display text-xs tracking-wide text-marble-dim"
                       >
                         {t}
                       </span>
@@ -224,9 +225,9 @@ export function BankView({
                 key="hint"
                 initial={reduce ? false : { opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="mt-5 font-serif text-sm text-marble-dim"
+                className="mt-5 font-sans text-sm text-marble-dim"
               >
-                Each star is a thought. Lines connect what recurs. Select one to
+                Each dot is a thought. Rules connect what recurs. Select one to
                 read it.
               </motion.p>
             )}
@@ -234,10 +235,10 @@ export function BankView({
         </div>
       ) : (
         <div className="mt-6">
-          {/* search */}
-          <div className="relative mb-7 max-w-md">
+          {/* search — terminal cue, on a single hairline rule */}
+          <div className="relative mb-8 max-w-md border-b border-hairline focus-within:border-accent">
             <Search
-              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-marble-dim"
+              className="pointer-events-none absolute left-1 top-1/2 size-4 -translate-y-1/2 text-marble-dim"
               strokeWidth={1.6}
               aria-hidden
             />
@@ -247,43 +248,48 @@ export function BankView({
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search your thoughts and threads…"
               aria-label="Search your thoughts"
-              className="h-10 w-full rounded-sm border border-hairline bg-raised pl-9 pr-3 font-sans text-sm text-marble placeholder:text-marble-dim focus:border-hairline-strong focus:outline-none"
+              className="h-10 w-full bg-transparent pl-7 pr-3 font-sans text-sm text-marble placeholder:text-marble-dim focus:outline-none"
             />
           </div>
 
           {filtered.length === 0 ? (
-            <p className="font-serif text-marble-dim">
+            <p className="font-sans text-marble-dim">
               Nothing matches &ldquo;{query}&rdquo;.
             </p>
           ) : (
-            <div className="space-y-10">
+            <div className="border-t border-hairline">
               {grouped.map((group) => (
-                <section key={group.day}>
-                  <p className="label-mono mb-4">{group.day}</p>
-                  <ul className="space-y-6">
+                <section
+                  key={group.day}
+                  className="border-b border-hairline py-7 first:pt-7"
+                >
+                  <p className="label-mono mb-5">{group.day}</p>
+                  <ul className="space-y-7">
                     {group.items.map((e) => (
-                      <li key={e.id}>
-                        <p className="label-mono mb-1.5 flex items-center gap-1.5">
+                      <li key={e.id} className="grid gap-3 sm:grid-cols-[10rem_1fr]">
+                        <p className="label-mono flex items-center gap-1.5 sm:pt-1">
                           <span aria-hidden>{TYPE_GLYPH[e.type]}</span>
                           {e.type} · {timeReadout(e.createdAt)}
                         </p>
-                        <p className="font-serif text-lg leading-relaxed text-marble text-pretty">
-                          {e.content}
-                        </p>
-                        {e.themes?.length ? (
-                          <div className="mt-2 flex flex-wrap gap-1.5">
-                            {e.themes.map((t) => (
-                              <button
-                                key={t}
-                                type="button"
-                                onClick={() => setQuery(t)}
-                                className="rounded-sm border border-hairline px-2 py-0.5 font-mono text-xs tracking-wide text-cyan transition-colors hover:border-hairline-strong hover:text-cyan"
-                              >
-                                {t}
-                              </button>
-                            ))}
-                          </div>
-                        ) : null}
+                        <div>
+                          <p className="font-sans text-lg leading-relaxed text-marble text-pretty">
+                            {e.content}
+                          </p>
+                          {e.themes?.length ? (
+                            <div className="mt-2.5 flex flex-wrap gap-1.5">
+                              {e.themes.map((t) => (
+                                <button
+                                  key={t}
+                                  type="button"
+                                  onClick={() => setQuery(t)}
+                                  className="rounded-sm border border-hairline px-2 py-0.5 font-mono-display text-xs tracking-wide text-marble-dim transition-colors hover:border-accent hover:text-accent"
+                                >
+                                  {t}
+                                </button>
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
                       </li>
                     ))}
                   </ul>
@@ -314,9 +320,9 @@ function ToggleButton({
       role="tab"
       aria-selected={active}
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 rounded-sm px-3 py-1.5 font-mono text-xs uppercase tracking-[0.12em] transition-colors ${
+      className={`inline-flex items-center gap-1.5 rounded-sm px-3 py-1.5 font-mono-display text-xs uppercase tracking-[0.12em] transition-colors ${
         active
-          ? "bg-raised-2 text-cyan"
+          ? "bg-raised-2 text-accent"
           : "text-marble-dim hover:text-marble"
       }`}
     >

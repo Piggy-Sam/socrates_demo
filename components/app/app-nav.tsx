@@ -30,7 +30,7 @@ export function AppNav({ displayName }: { displayName?: string | null }) {
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-3 px-5 py-3.5 sm:px-8">
         <Wordmark size="sm" />
 
-        <nav className="order-3 flex items-center gap-1 sm:order-2 sm:ml-2">
+        <nav className="order-3 flex items-center gap-0.5 sm:order-2 sm:ml-2">
           {LINKS.map((l) => {
             const active =
               pathname === l.href || pathname.startsWith(l.href + "/");
@@ -39,9 +39,9 @@ export function AppNav({ displayName }: { displayName?: string | null }) {
                 key={l.href}
                 href={l.href}
                 aria-current={active ? "page" : undefined}
-                className={`rounded-sm px-3 py-1.5 text-sm transition-colors ${
+                className={`label-mono rounded-sm px-2.5 py-1.5 transition-colors ${
                   active
-                    ? "text-gold"
+                    ? "text-accent"
                     : "text-marble-dim hover:text-marble"
                 }`}
               >
@@ -52,8 +52,9 @@ export function AppNav({ displayName }: { displayName?: string | null }) {
         </nav>
 
         <div className="order-2 ml-auto flex items-center gap-2.5 sm:order-3">
-          {/* outline, not gold: gold is rationed to each surface's one focal
-              action / Socrates' star (SPEC §9). Redundant on /talk itself. */}
+          {/* "Talk now" is one way to think out loud, never the headline —
+              outline, secondary. The single accent is the active nav item.
+              Redundant on /talk itself. */}
           {!pathname.startsWith("/talk") && (
             <LinkButton href="/talk" variant="outline" size="sm">
               Talk now

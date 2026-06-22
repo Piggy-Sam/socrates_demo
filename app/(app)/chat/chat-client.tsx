@@ -216,16 +216,24 @@ export function ChatClient({ displayName }: { displayName: string | null }) {
       {/* composer */}
       <div className="sticky bottom-0 -mx-1 mt-2 border-t border-hairline bg-ink/80 px-1 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-3 backdrop-blur-sm">
         <div className="flex items-end gap-3">
-          <textarea
-            ref={textareaRef}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={onKeyDown}
-            rows={1}
-            placeholder="What&rsquo;s on your mind?"
-            aria-label="Your message to Socrates"
-            className="max-h-[200px] min-h-[2.75rem] flex-1 resize-none rounded-md border border-hairline bg-raised px-4 py-3 font-sans text-base text-marble placeholder:text-marble-dim/70 outline-none transition-colors focus:border-hairline-strong"
-          />
+          <div className="flex flex-1 items-start gap-2 rounded-md border border-hairline bg-raised px-3 transition-colors focus-within:border-accent">
+            <span
+              aria-hidden
+              className="select-none pt-3 font-mono-display text-base leading-none text-accent"
+            >
+              &rsaquo;
+            </span>
+            <textarea
+              ref={textareaRef}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={onKeyDown}
+              rows={1}
+              placeholder="What&rsquo;s on your mind?"
+              aria-label="Your message to Socrates"
+              className="max-h-[200px] min-h-[2.75rem] flex-1 resize-none bg-transparent py-3 pr-1 font-sans text-base text-marble placeholder:text-marble-dim outline-none"
+            />
+          </div>
           <Button
             type="button"
             variant="gold"
@@ -238,7 +246,7 @@ export function ChatClient({ displayName }: { displayName: string | null }) {
             <ArrowUp strokeWidth={1.8} className="size-5" />
           </Button>
         </div>
-        <p className="label-mono mt-2 hidden text-marble-dim/60 sm:block">
+        <p className="label-mono mt-2 hidden text-marble-dim sm:block">
           Enter to send &middot; Shift + Enter for a new line
         </p>
       </div>
@@ -266,21 +274,21 @@ function TurnBlock({
     >
       {isUser ? (
         <div className="flex flex-col items-end">
-          <p className="label-mono mb-1.5 text-marble-dim/70">You</p>
-          <p className="text-pretty max-w-[85%] whitespace-pre-wrap rounded-md rounded-tr-sm border border-hairline bg-raised px-4 py-2.5 text-right font-serif text-[1.0625rem] leading-relaxed text-marble">
+          <p className="label-mono mb-1.5 text-marble-dim">You</p>
+          <p className="text-pretty max-w-[85%] whitespace-pre-wrap rounded-md rounded-tr-sm border border-hairline bg-raised px-4 py-2.5 text-right font-sans text-[1.0625rem] leading-relaxed text-marble">
             {turn.content}
           </p>
         </div>
       ) : (
         <div className="flex flex-col items-start">
-          <p className="label-mono mb-1.5 flex items-center gap-1.5 text-[color:var(--gold)]/80">
+          <p className="label-mono mb-1.5 flex items-center gap-1.5 text-accent">
             <StarMark size={9} />
             Socrates
           </p>
           {pending ? (
-            <BreathingDot reduce={reduce} />
+            <ThinkingCursor reduce={reduce} />
           ) : (
-            <p className="text-pretty max-w-[88%] whitespace-pre-wrap font-serif text-[1.0625rem] leading-relaxed text-marble-dim">
+            <p className="text-pretty max-w-[88%] whitespace-pre-wrap font-sans text-[1.0625rem] leading-relaxed text-marble">
               {turn.content}
             </p>
           )}
@@ -290,27 +298,22 @@ function TurnBlock({
   );
 }
 
-/** A quiet living point of light while Socrates is thinking — never a "typing" gimmick. */
-function BreathingDot({ reduce }: { reduce: boolean }) {
+/** A quiet terminal cursor while Socrates is thinking — never a "typing" gimmick. */
+function ThinkingCursor({ reduce }: { reduce: boolean }) {
   return (
     <span
-      className="relative ml-1 mt-1 inline-block size-2 rounded-full"
+      className="mt-1 inline-flex items-center"
       role="status"
       aria-label="Socrates is thinking"
-      style={{
-        background:
-          "radial-gradient(circle at 40% 35%, var(--gold-lit), var(--gold) 65%, transparent 74%)",
-      }}
     >
-      {!reduce && (
-        <motion.span
-          aria-hidden
-          className="absolute inset-0 rounded-full"
-          style={{ background: "rgb(var(--star-glow) / 0.6)" }}
-          animate={{ scale: [1, 2.4, 1], opacity: [0.5, 0, 0.5] }}
-          transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
-        />
-      )}
+      {/* a calm blinking block — the prompt waiting to speak */}
+      <span
+        aria-hidden
+        className={`inline-block rounded-[1px] bg-accent ${
+          reduce ? "opacity-60" : "cursor-blink"
+        }`}
+        style={{ width: "0.5em", height: "1.05em" }}
+      />
     </span>
   );
 }
@@ -330,12 +333,16 @@ function EmptyState({
       transition={{ duration: 0.6, ease: [0.2, 0.8, 0.2, 1] }}
       className="flex min-h-[40vh] flex-col items-start justify-center"
     >
-      <StarMark size={14} className="mb-5" />
-      <p className="text-balance font-serif text-xl leading-relaxed text-marble-dim sm:text-2xl">
+      <p className="label-mono mb-4 flex items-center gap-1.5 text-marble-dim">
+        <StarMark size={11} />
+        Socrates ready
+      </p>
+      <p className="text-balance font-sans text-xl leading-relaxed text-marble sm:text-2xl">
         {first ? `${first}, what's on your mind?` : "What's on your mind?"}
       </p>
-      <p className="text-pretty mt-3 max-w-prose font-serif text-base text-marble-dim/70">
-        Start anywhere &mdash; a half-formed thought is enough.
+      <p className="text-pretty mt-3 max-w-prose font-sans text-base text-marble-dim">
+        Start anywhere &mdash; a half-formed thought is enough. He&rsquo;ll ask
+        the questions; the thinking stays yours.
       </p>
     </motion.div>
   );

@@ -1,6 +1,6 @@
-// The bank — the constellation of your mind. Every thought you've worked out,
-// rendered as a personal night sky (sky view) and as a commonplace book (list
-// view). Calm, reverent, no metrics-as-pressure. Scoped to the signed-in user.
+// The bank — the field of your thinking. Every thought you've worked out,
+// plotted as a dot-matrix field (field view) and kept as a commonplace ledger
+// (list view). Calm, precise, no metrics-as-pressure. Scoped to the signed-in user.
 
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
@@ -53,13 +53,13 @@ export default async function BankPage() {
   return (
     <div className="mx-auto max-w-5xl">
       <header className="pb-7">
-        <p className="label-mono mb-3">The constellation of your mind</p>
+        <p className="label-mono mb-3">The field of your thinking</p>
         <h1 className="font-display text-4xl font-light tracking-tight text-marble sm:text-5xl">
           The bank
         </h1>
-        <p className="mt-4 max-w-xl font-serif text-lg leading-relaxed text-marble-dim text-pretty">
-          Everything you&apos;ve thought out loud, kept. Each thought a star;
-          the threads you return to draw the lines between them.
+        <p className="mt-4 max-w-xl font-sans text-lg leading-relaxed text-marble-dim text-pretty">
+          Everything you&apos;ve thought out loud, kept. Each thought a point;
+          the threads you return to draw the rules between them.
         </p>
       </header>
 
