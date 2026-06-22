@@ -5,8 +5,9 @@ type Variant = "gold" | "outline" | "ghost";
 type Size = "sm" | "md" | "lg";
 
 const VARIANTS: Record<Variant, string> = {
-  // primary action — crisp solid accent (rationed), no glow
-  gold: "bg-accent text-white font-medium hover:bg-accent-strong active:translate-y-px",
+  // primary action — crisp solid accent (rationed), no glow. accent-btn fill
+  // keeps white-on-blue at WCAG AA in both themes; opacity hover preserves it.
+  gold: "bg-accent-btn text-white font-medium hover:opacity-90 active:translate-y-px",
   outline:
     "border border-hairline-strong text-marble hover:border-accent hover:text-accent bg-transparent",
   ghost: "text-marble-dim hover:text-marble hover:bg-raised-2 bg-transparent",

@@ -130,7 +130,7 @@ const HEADING_CLASS: Record<number, string> = {
   4: "label-mono",
 };
 
-/** Render restrained markdown in the serif reading voice. */
+/** Render restrained markdown in the Geist reading voice. */
 export function SummaryMarkdown({ content, className = "" }: Props) {
   const blocks = parseBlocks(content);
 

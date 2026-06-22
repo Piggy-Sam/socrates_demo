@@ -37,7 +37,7 @@ function renderInline(text: string, keyPrefix: string): ReactNode[] {
   return nodes;
 }
 
-/** Render plain markdown into the serif recap body. */
+/** Render plain markdown into the Geist recap body. */
 export function renderRecap(markdown: string): ReactNode {
   const lines = markdown.replace(/\r\n/g, "\n").split("\n");
   const blocks: ReactNode[] = [];

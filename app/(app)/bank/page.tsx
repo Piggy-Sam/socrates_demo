@@ -58,7 +58,7 @@ export default async function BankPage() {
           The bank
         </h1>
         <p className="mt-4 max-w-xl font-sans text-lg leading-relaxed text-marble-dim text-pretty">
-          Everything you&apos;ve thought out loud, kept. Each thought a point;
+          Everything you&apos;ve worked out here, kept. Each thought a point;
           the threads you return to draw the rules between them.
         </p>
       </header>

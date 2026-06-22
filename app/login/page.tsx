@@ -109,7 +109,7 @@ function LoginInner() {
                       if (error) setError(null);
                     }}
                     disabled={status === "sending"}
-                    className="h-11 w-full rounded-sm border border-hairline-strong bg-raised-2 pl-8 pr-3.5 font-mono-display text-sm text-marble outline-none transition-colors duration-200 placeholder:text-marble-dim/60 hover:border-accent/50 focus:border-accent disabled:opacity-50"
+                    className="h-11 w-full rounded-sm border border-hairline-strong bg-raised-2 pl-8 pr-3.5 font-mono-display text-sm text-marble outline-none transition-colors duration-200 placeholder:text-marble-dim hover:border-accent/50 focus:border-accent disabled:opacity-50"
                   />
                 </div>
 

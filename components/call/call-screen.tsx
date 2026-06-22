@@ -92,7 +92,11 @@ function CallSurface({ displayName }: Props) {
       </main>
 
       {/* live captions — minimal, the latest turn only, in Geist */}
-      <section className="relative z-10 flex min-h-[3.5rem] w-full max-w-md items-end justify-center px-2">
+      <section
+        aria-live="polite"
+        aria-atomic="true"
+        className="relative z-10 flex min-h-[3.5rem] w-full max-w-md items-end justify-center px-2"
+      >
         <AnimatePresence mode="wait">
           {isActive && lastMessage ? (
             <motion.p
@@ -191,7 +195,7 @@ function StartControl({
       type="button"
       onClick={onStart}
       disabled={connecting}
-      className="flex h-14 w-full max-w-xs items-center justify-center rounded-md bg-accent px-8 font-sans text-base font-medium text-white transition-all duration-200 ease-[cubic-bezier(0.2,0.8,0.2,1)] hover:bg-accent-strong active:translate-y-px disabled:opacity-60 disabled:pointer-events-none"
+      className="flex h-14 w-full max-w-xs items-center justify-center rounded-md bg-accent-btn px-8 font-sans text-base font-medium text-white transition-all duration-200 ease-[cubic-bezier(0.2,0.8,0.2,1)] hover:opacity-90 active:translate-y-px disabled:opacity-60 disabled:pointer-events-none"
     >
       {connecting ? "connecting…" : label}
     </button>

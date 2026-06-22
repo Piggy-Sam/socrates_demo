@@ -139,9 +139,9 @@ export function BankView({
     return (
       <div className="border-t border-hairline py-16">
         <p className="max-w-md font-sans text-lg leading-relaxed text-marble-dim text-pretty">
-          Nothing here yet. The first time we talk, each thought you work out
-          becomes a point in the field — and over time, the pattern of your mind
-          emerges.
+          Nothing here yet. The first thought you work out here — written or
+          spoken — plots a point in the field, and over time the shape of your
+          thinking emerges.
         </p>
       </div>
     );
@@ -322,7 +322,7 @@ function ToggleButton({
       onClick={onClick}
       className={`inline-flex items-center gap-1.5 rounded-sm px-3 py-1.5 font-mono-display text-xs uppercase tracking-[0.12em] transition-colors ${
         active
-          ? "bg-raised-2 text-accent"
+          ? "bg-raised-2 text-accent-strong"
           : "text-marble-dim hover:text-marble"
       }`}
     >

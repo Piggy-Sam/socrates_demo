@@ -22,6 +22,7 @@
 
   --accent: #0f62fe; /* the one profound blue */
   --accent-strong: #0a4fd6; /* hover / active */
+  --accent-btn: #0f62fe; /* solid-fill for white text — AA (5:1) */
 
   /* aliases — legacy utilities (text-gold, .glow-gold, text-cyan) auto-flip */
   --gold: var(--accent);
@@ -55,6 +56,7 @@
 
   --accent: #4d7cff; /* lifted blue for contrast on dark */
   --accent-strong: #7fa2ff;
+  --accent-btn: #3a63e0; /* darker solid-fill so white text hits AA on dark */
 
   --gold: var(--accent);
   --gold-lit: var(--accent-strong);
@@ -85,6 +87,7 @@
   --color-marble-dim: var(--marble-dim);
   --color-accent: var(--accent);
   --color-accent-strong: var(--accent-strong);
+  --color-accent-btn: var(--accent-btn);
   /* legacy aliases so existing utilities keep compiling + now render blue */
   --color-gold: var(--accent);
   --color-gold-lit: var(--accent-strong);

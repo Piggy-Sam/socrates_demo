@@ -10,7 +10,7 @@ const plexMono = IBM_Plex_Mono({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-plex-mono",
-  weight: ["400", "500", "600", "700"],
+  weight: ["300", "400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {

@@ -4,6 +4,7 @@
 // This is an instrument for your own thinking — not a feed, not a scoreboard.
 // No streaks, no counts-as-pressure, no "you're on a roll." Just an invitation.
 
+import Link from "next/link";
 import { desc, eq } from "drizzle-orm";
 import { ArrowRight, PenLine } from "lucide-react";
 import { db } from "@/lib/db/client";
@@ -135,13 +136,13 @@ export default async function TodayPage() {
         <section className="border-t border-hairline py-9">
           <div className="mb-5 flex items-baseline justify-between">
             <p className="label-mono">Lately, in your own words</p>
-            <a
+            <Link
               href="/bank"
               className="label-mono inline-flex items-center gap-1.5 text-marble-dim transition-colors hover:text-accent"
             >
               the bank
               <ArrowRight className="size-3.5" strokeWidth={1.6} />
-            </a>
+            </Link>
           </div>
           <ul className="space-y-6">
             {recentEntries.map((e: Entry) => (
