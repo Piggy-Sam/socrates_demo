@@ -62,7 +62,9 @@ export function DotMatrix({ className = "", spacing = 30, intensity = 1 }: Props
             const d = Math.hypot(x - ptr.x, y - ptr.y);
             if (d < GR) {
               const fe = smooth(1 - d / GR);
-              alpha += fe * 0.45;
+              const ent = 0.4 + 0.9 * e; // entropy — non-uniform
+              radius += fe * 2.8 * ent;
+              alpha += fe * 0.45 * ent;
               colorK = Math.min(1, colorK + fe * 0.7);
             }
           }
@@ -71,15 +73,6 @@ export function DotMatrix({ className = "", spacing = 30, intensity = 1 }: Props
           ctx.fillStyle = rgba(mix(accent, lit, colorK), Math.min(0.85, alpha) * intensity);
           ctx.fill();
         }
-      }
-      if (ptr.active && !reduce) {
-        const grd = ctx.createRadialGradient(ptr.x, ptr.y, 0, ptr.x, ptr.y, GR);
-        grd.addColorStop(0, rgba(accent, 0.08 * intensity));
-        grd.addColorStop(1, rgba(accent, 0));
-        ctx.globalCompositeOperation = "lighter";
-        ctx.fillStyle = grd;
-        ctx.fillRect(ptr.x - GR, ptr.y - GR, GR * 2, GR * 2);
-        ctx.globalCompositeOperation = "source-over";
       }
       if (!reduce) raf = requestAnimationFrame(draw);
     };

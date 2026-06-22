@@ -62,8 +62,7 @@ export function LandingField({ faceId, className = "", spacing = 22 }: Props) {
     const F = BUST_FACE; // { w, h, d[] }
     const faceAspect = F.w / F.h;
 
-    const GR = 150; // cursor glow radius
-    const RAMP = 230; // gradient reach toward the centerpiece
+    const GR = 150; // cursor reach
 
     const draw = (now: number) => {
       const t = (now - start) / 1000;
@@ -74,22 +73,22 @@ export function LandingField({ faceId, className = "", spacing = 22 }: Props) {
       // where the face sits this frame (follows the layout element)
       const el = document.getElementById(faceId);
       const r = el?.getBoundingClientRect();
-      let fx = 0, fy = 0, fscale = 0, rcx = 0, rcy = 0, orbR = 1;
-      let rectL = 0, rectR = 0, rectT = 0, rectB = 0, has = false;
+      let fx = 0, fy = 0, fscale = 0, rcx = 0, rcy = 0, orbR = 1, maxD = 1;
+      let has = false;
       if (r && r.width > 4 && r.height > 4) {
         has = true;
-        rectL = r.left; rectR = r.right; rectT = r.top; rectB = r.bottom;
-        const fit = 0.96;
+        const fit = 1.0;
         if (r.width / r.height > faceAspect) {
           fscale = (r.height * fit) / F.h;
         } else {
           fscale = (r.width * fit) / F.w;
         }
-        fx = rectL + r.width / 2 - (F.w * fscale) / 2;
-        fy = rectT + r.height / 2 - (F.h * fscale) / 2;
-        rcx = rectL + r.width / 2;
-        rcy = rectT + r.height / 2;
-        orbR = Math.min(r.width, r.height) * 0.42;
+        fx = r.left + r.width / 2 - (F.w * fscale) / 2;
+        fy = r.top + r.height / 2 - (F.h * fscale) / 2;
+        rcx = r.left + r.width / 2;
+        rcy = r.top + r.height / 2;
+        orbR = Math.min(r.width, r.height) * 0.46;
+        maxD = Math.hypot(Math.max(rcx, w - rcx), Math.max(rcy, h - rcy)) || 1;
       }
 
       ctx.clearRect(0, 0, w, h);
@@ -111,21 +110,28 @@ export function LandingField({ faceId, className = "", spacing = 22 }: Props) {
             }
             const ou = (X - rcx) / orbR, ov = (Y - rcy) / orbR;
             const rr = Math.hypot(ou, ov);
-            const orbVal = rr < 1 ? smooth(1.05 - rr) : 0;
+            let orbVal = 0;
+            if (rr < 1) {
+              // the design-system orb's "speaking" rhythm: rings emanate outward
+              const ring =
+                0.5 + 0.34 * Math.sin(rr * 9 - t * 5) + 0.16 * Math.sin(rr * 15 - t * 8.2);
+              orbVal = smooth(1.05 - rr) * (0.4 + 0.6 * Math.max(0, Math.min(1, ring)));
+            }
             centerVal = faceVal * (1 - m) + orbVal * m;
 
-            // gradient: swell ambient dots toward the centerpiece rect
-            const dx = Math.max(rectL - X, 0, X - rectR);
-            const dy = Math.max(rectT - Y, 0, Y - rectB);
-            g = smooth(1 - Math.hypot(dx, dy) / RAMP);
+            // concentric, uniform gradient — farthest edge → centerpiece
+            const dc = Math.hypot(X - rcx, Y - rcy);
+            g = 1 - dc / maxD;
+            if (g < 0) g = 0;
           }
 
-          // size + opacity (the DNA carries motion; chaotic base)
-          const rAmb = (1.3 + ce * 1.5) * (1 + g * 0.7);
+          // size + opacity (the DNA carries motion; chaotic base) — the
+          // concentric gradient swells dots smoothly toward the centerpiece
+          const rAmb = (1.3 + ce * 1.5) * (1 + g * 1.0);
           let radius = rAmb + centerVal * (S * 0.46 - rAmb);
           radius *= 0.82 + 0.32 * ce;
 
-          const aAmb = (0.06 + ce * 0.13) * (1 + g * 0.5);
+          const aAmb = (0.05 + ce * 0.12) * (1 + g * 0.8);
           let alpha = aAmb + centerVal * (0.92 - aAmb);
           alpha *= 0.78 + 0.28 * ce;
 
@@ -133,13 +139,16 @@ export function LandingField({ faceId, className = "", spacing = 22 }: Props) {
           const centerColor = mix(marble, accent, m);
           let color = mix(accent, centerColor, centerVal);
 
-          // cursor: pool light (brightness only, no deform)
+          // cursor: brighten + ENLARGE nearby dots, non-uniform (entropy), no
+          // halo — the glow lives in the dots themselves.
           if (ptr.active) {
             const d = Math.hypot(X - ptr.x, Y - ptr.y);
             if (d < GR) {
               const fe = smooth(1 - d / GR);
-              alpha += fe * 0.4;
-              color = mix(color, lit, fe * 0.6);
+              const ent = 0.4 + 0.9 * ce; // per-dot entropy, lively
+              radius += fe * 3.2 * ent;
+              alpha += fe * 0.5 * ent;
+              color = mix(color, lit, fe * 0.65);
             }
           }
 
@@ -148,17 +157,6 @@ export function LandingField({ faceId, className = "", spacing = 22 }: Props) {
           ctx.fillStyle = rgba(color, Math.min(1, alpha));
           ctx.fill();
         }
-      }
-
-      // soft glow pooled at the cursor — light leaking off the field
-      if (ptr.active && !reduce) {
-        const grd = ctx.createRadialGradient(ptr.x, ptr.y, 0, ptr.x, ptr.y, GR);
-        grd.addColorStop(0, rgba(accent, 0.1));
-        grd.addColorStop(1, rgba(accent, 0));
-        ctx.globalCompositeOperation = "lighter";
-        ctx.fillStyle = grd;
-        ctx.fillRect(ptr.x - GR, ptr.y - GR, GR * 2, GR * 2);
-        ctx.globalCompositeOperation = "source-over";
       }
 
       if (!reduce) raf = requestAnimationFrame(draw);
