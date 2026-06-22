@@ -19,9 +19,15 @@ export async function GET(request: NextRequest) {
   const tokenHash = searchParams.get("token_hash");
   const type = searchParams.get("type") as EmailOtpType | null;
 
-  // keep `next` relative-only so it can't be used as an open redirect
+  // keep `next` a single-slash relative path so it can't be an open redirect
+  // (`//evil.com` and `/\evil.com` both resolve off-origin via new URL()).
   const nextParam = searchParams.get("next") ?? "/today";
-  const next = nextParam.startsWith("/") ? nextParam : "/today";
+  const next =
+    nextParam.startsWith("/") &&
+    !nextParam.startsWith("//") &&
+    !nextParam.startsWith("/\\")
+      ? nextParam
+      : "/today";
 
   const supabase = await createClient();
 
