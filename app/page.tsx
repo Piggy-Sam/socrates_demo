@@ -1,5 +1,4 @@
-import { DotMatrix } from "@/components/decor/dot-matrix";
-import { BustField } from "@/components/brand/bust-field";
+import { LandingField } from "@/components/decor/landing-field";
 import { Wordmark } from "@/components/brand/wordmark";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { LinkButton } from "@/components/ui/button";
@@ -25,9 +24,9 @@ const PRINCIPLES = [
 export default function Home() {
   return (
     <main className="relative flex min-h-dvh flex-col">
-      {/* the living dot-matrix — the one decorative language */}
+      {/* one unified field: ambient dots + the face emerging at #hero-face */}
       <div className="fixed inset-0 -z-10">
-        <DotMatrix />
+        <LandingField faceId="hero-face" />
       </div>
 
       {/* nav */}
@@ -43,13 +42,12 @@ export default function Home() {
 
       {/* hero — the living face (left), the wordmark + tagline + actions (right) */}
       <section className="grid flex-1 items-center gap-6 px-6 py-10 lg:grid-cols-2 lg:gap-10 lg:px-16">
-        <div className="relative order-1 h-[42vh] min-h-[300px] lg:h-[74vh]">
-          <BustField
-            morph
-            interactive
-            className="pointer-events-none absolute inset-0"
-          />
-        </div>
+        {/* spacer — the unified field draws the emerging face into this box */}
+        <div
+          id="hero-face"
+          aria-hidden
+          className="order-1 h-[42vh] min-h-[300px] lg:h-[74vh]"
+        />
 
         <div className="order-2 flex flex-col items-center text-center lg:items-start lg:text-left">
           <p className="label-mono mb-7 flex items-center gap-2 animate-[fade-rise_0.7s_var(--ease-instrument)_both]">

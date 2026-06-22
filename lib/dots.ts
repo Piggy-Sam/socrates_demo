@@ -11,6 +11,23 @@ export function wave(a: number, b: number, t: number): number {
   return (w1 * 0.46 + w2 * 0.32 + w3 * 0.22) * 0.5 + 0.5;
 }
 
+const frac = (x: number) => x - Math.floor(x);
+const hash1 = (n: number) => frac(Math.sin(n * 127.1 + 311.7) * 43758.5453);
+
+/**
+ * Per-dot CHAOTIC energy, 0..1. Each seed gets its own frequencies + phases, so
+ * the field flickers independently (no coherent travelling wave). This is the
+ * always-on base liveliness.
+ */
+export function chaos(seed: number, t: number): number {
+  const f1 = 0.45 + hash1(seed) * 1.7;
+  const p1 = hash1(seed + 1.7) * 6.2832;
+  const f2 = 0.8 + hash1(seed + 5.3) * 2.6;
+  const p2 = hash1(seed + 9.1) * 6.2832;
+  const e = 0.5 + 0.37 * Math.sin(t * f1 + p1) + 0.31 * Math.sin(t * f2 + p2);
+  return e < 0 ? 0 : e > 1 ? 1 : e;
+}
+
 export type RGB = [number, number, number];
 
 export function mix(c1: RGB, c2: RGB, k: number): RGB {
