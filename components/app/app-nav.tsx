@@ -12,6 +12,7 @@ const LINKS = [
   { href: "/today", label: "Today" },
   { href: "/bank", label: "The bank" },
   { href: "/chat", label: "Chat" },
+  { href: "/recap", label: "Recap" },
 ] as const;
 
 export function AppNav({ displayName }: { displayName?: string | null }) {
