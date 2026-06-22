@@ -5,11 +5,12 @@ type Variant = "gold" | "outline" | "ghost";
 type Size = "sm" | "md" | "lg";
 
 const VARIANTS: Record<Variant, string> = {
-  // the soul/the call-to-action — gold is rationed to the focal action
-  gold: "bg-gold text-ink font-medium hover:bg-gold-lit active:translate-y-px shadow-[0_0_24px_-6px_rgb(var(--star-glow)/0.6)]",
+  // primary action — crisp solid accent (rationed), no glow. accent-btn fill
+  // keeps white-on-blue at WCAG AA in both themes; opacity hover preserves it.
+  gold: "bg-accent-btn text-white font-medium hover:opacity-90 active:translate-y-px",
   outline:
-    "border border-hairline-strong text-marble hover:border-gold hover:text-gold bg-transparent",
-  ghost: "text-marble-dim hover:text-marble hover:bg-raised bg-transparent",
+    "border border-hairline-strong text-marble hover:border-accent hover:text-accent bg-transparent",
+  ghost: "text-marble-dim hover:text-marble hover:bg-raised-2 bg-transparent",
 };
 
 const SIZES: Record<Size, string> = {

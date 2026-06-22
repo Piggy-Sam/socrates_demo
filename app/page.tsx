@@ -1,31 +1,33 @@
-import Link from "next/link";
-import { Constellation } from "@/components/sky/constellation";
-import { BreathingStar } from "@/components/sky/breathing-star";
+import { DotMatrix } from "@/components/decor/dot-matrix";
+import { BustField } from "@/components/brand/bust-field";
 import { Wordmark } from "@/components/brand/wordmark";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { LinkButton } from "@/components/ui/button";
-import { SAMPLE_SKY } from "@/lib/sample-sky";
+
+const PRINCIPLES = [
+  {
+    fig: "FIG.01 · THE METHOD",
+    title: "A midwife for thought",
+    body: "Socrates delivers nothing of its own. In the old maieutic sense it helps you deliver the idea you didn't know you were carrying — drawing out the half-formed thought until it holds.",
+  },
+  {
+    fig: "FIG.02 · THE DIALECTIC",
+    title: "It presses on your reasoning",
+    body: "Where an answer engine resolves, this interrogates. The naive question, the contradiction held up gently, the assumption named — the structure of your thinking, stress-tested.",
+  },
+  {
+    fig: "FIG.03 · THE RECORD",
+    title: "The shape of your mind",
+    body: "Everything you work out becomes a point in the field. What you keep returning to rises to the surface — the evolving record of a mind examining itself.",
+  },
+];
 
 export default function Home() {
   return (
     <main className="relative flex min-h-dvh flex-col">
-      {/* the night sky, full-bleed and ambient behind everything */}
-      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        <Constellation
-          stars={SAMPLE_SKY}
-          interactive={false}
-          framed={false}
-          igniteDuration={2.2}
-          className="opacity-70"
-        />
-        {/* vignette to ink at the edges — keeps the type legible */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(ellipse 75% 70% at 50% 42%, transparent 30%, var(--ink) 92%)",
-          }}
-        />
+      {/* the living dot-matrix — the one decorative language */}
+      <div className="fixed inset-0 -z-10">
+        <DotMatrix />
       </div>
 
       {/* nav */}
@@ -39,52 +41,78 @@ export default function Home() {
         </nav>
       </header>
 
-      {/* hero */}
-      <section className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
-        <p className="label-mono mb-10 animate-[fade-rise_0.7s_var(--ease-instrument)_both]">
-          An instrument for the examined life
-        </p>
-
-        <div className="mb-10 animate-[ignite_1.1s_var(--ease-instrument)_both]">
-          <BreathingStar state="idle" size={140} />
+      {/* hero — the living face (left), the wordmark + tagline + actions (right) */}
+      <section className="grid flex-1 items-center gap-6 px-6 py-10 lg:grid-cols-2 lg:gap-10 lg:px-16">
+        <div className="relative order-1 h-[42vh] min-h-[300px] lg:h-[74vh]">
+          <BustField
+            morph
+            interactive
+            className="pointer-events-none absolute inset-0"
+          />
         </div>
 
-        <h1 className="max-w-3xl font-display text-5xl font-light leading-[1.05] tracking-tight text-balance sm:text-7xl">
-          Think out loud.{" "}
-          <em className="font-normal italic text-gold">Know thyself.</em>
-        </h1>
+        <div className="order-2 flex flex-col items-center text-center lg:items-start lg:text-left">
+          <p className="label-mono mb-7 flex items-center gap-2 animate-[fade-rise_0.7s_var(--ease-instrument)_both]">
+            <span aria-hidden>&gt;</span>
+            An instrument for the examined life
+          </p>
 
-        <p className="mt-7 max-w-xl font-serif text-lg leading-relaxed text-marble-dim text-pretty sm:text-xl">
-          A voice that calls you each day and helps you reach your own clarity —
-          drawing out half-formed thoughts, asking the question that cracks them,
-          and keeping the evolving record of your mind.
-        </p>
+          <div className="animate-[fade-rise_0.7s_var(--ease-instrument)_0.05s_both]">
+            <Wordmark size="xl" href={null} withStar={false} />
+          </div>
 
-        <div className="mt-11 flex flex-col items-center gap-3 sm:flex-row">
-          {/* the breathing star above is the one gold focal point — keep the
-              CTA outline so it doesn't compete (SPEC §9 gold rationing) */}
-          <LinkButton href="/login" size="lg" variant="outline">
-            Begin the dialogue
-          </LinkButton>
-          <LinkButton href="/design" size="lg" variant="ghost">
-            See the instrument
-          </LinkButton>
+          <h1 className="mt-9 max-w-md font-display text-2xl font-light leading-snug tracking-tight text-balance text-marble-dim sm:text-3xl">
+            It doesn&apos;t hand you answers.{" "}
+            <span className="text-marble">It sharpens your own.</span>
+          </h1>
+
+          <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row">
+            <LinkButton href="/login" size="lg" variant="gold">
+              Begin
+            </LinkButton>
+            <LinkButton href="/design" size="lg" variant="ghost">
+              See the instrument
+            </LinkButton>
+          </div>
         </div>
       </section>
 
-      {/* instrument footer readout */}
+      {/* what it is — the moved description + three principles */}
+      <section className="border-t border-hairline bg-ink/70 px-6 py-16 backdrop-blur-sm sm:px-10">
+        <div className="mx-auto max-w-5xl">
+          <p className="max-w-2xl font-sans text-lg leading-relaxed text-marble text-pretty">
+            A thinking instrument modeled on the Socratic method — it draws out
+            the half-formed thought, presses on your reasoning, and keeps the
+            record of your mind as it moves.{" "}
+            <span className="text-marble-dim">Speak it, or write it.</span>
+          </p>
+
+          <div className="mt-10 grid gap-px overflow-hidden rounded-md border border-hairline bg-hairline sm:grid-cols-3">
+            {PRINCIPLES.map((p) => (
+              <div key={p.fig} className="bg-ink p-7">
+                <p className="label-mono text-accent">{p.fig}</p>
+                <h2 className="mt-3 font-display text-xl font-normal tracking-tight text-marble">
+                  {p.title}
+                </h2>
+                <p className="mt-3 font-sans text-sm leading-relaxed text-marble-dim text-pretty">
+                  {p.body}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* footer readout */}
       <footer className="flex flex-col items-center gap-2 px-6 py-7 sm:flex-row sm:justify-between sm:px-10">
-        <span className="label-mono text-marble-dim">
-          Aegean Night · v0.1 · Maieutic Engine
+        <span className="label-mono inline-flex items-center text-marble-dim">
+          socrates --examine
+          <span
+            aria-hidden
+            className="cursor-blink ml-1 inline-block h-3 w-1.5 align-middle"
+          />
         </span>
-        <span className="label-mono text-marble-dim">
-          <Link
-            href="/design"
-            className="rounded-sm transition-colors hover:text-gold"
-          >
-            ✦ The constellation of your mind
-          </Link>
-        </span>
+        <span className="label-mono text-marble-dim">v0.2 · the instrument</span>
       </footer>
     </main>
   );

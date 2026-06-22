@@ -16,7 +16,7 @@ type Props = {
 };
 
 const FIELD =
-  "h-11 w-full rounded-sm border border-hairline-strong bg-raised/60 px-3.5 font-sans text-sm text-marble outline-none transition-colors duration-200 placeholder:text-marble-dim/60 hover:border-gold/40 focus:border-gold disabled:opacity-50";
+  "h-11 w-full rounded-sm border border-hairline-strong bg-raised-2 px-3.5 font-sans text-sm text-marble outline-none transition-colors duration-200 placeholder:text-marble-dim hover:border-accent/50 focus:border-accent disabled:opacity-50";
 
 function Field({
   label,

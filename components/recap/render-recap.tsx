@@ -1,9 +1,10 @@
-import { Fragment, type ReactNode } from "react";
+import { type ReactNode } from "react";
 
 // A small, dependency-free markdown renderer for the recap letter. The recap
 // is intentionally plain markdown (short paragraphs, light emphasis, the odd
-// heading or list), so we handle just those — rendered in the reverent serif
-// register, never as a feed. Shared by the server page and the client button.
+// heading or list), so we handle just those — body set in Geist (readable, a
+// letter not a feed), headings in Plex Mono, clean hairline-accented lists.
+// Shared by the server page and the client button.
 
 /** Inline emphasis: **bold**, *italic* / _italic_. Escaped, no raw HTML. */
 function renderInline(text: string, keyPrefix: string): ReactNode[] {
@@ -36,7 +37,7 @@ function renderInline(text: string, keyPrefix: string): ReactNode[] {
   return nodes;
 }
 
-/** Render plain markdown into the serif recap body. */
+/** Render plain markdown into the Geist recap body. */
 export function renderRecap(markdown: string): ReactNode {
   const lines = markdown.replace(/\r\n/g, "\n").split("\n");
   const blocks: ReactNode[] = [];
@@ -61,9 +62,15 @@ export function renderRecap(markdown: string): ReactNode {
     const items = list;
     list = [];
     blocks.push(
-      <ul key={`ul-${key++}`} className="ml-4 list-disc space-y-2 marker:text-cyan">
+      <ul
+        key={`ul-${key++}`}
+        className="ml-1 list-none space-y-2.5"
+      >
         {items.map((item, idx) => (
-          <li key={idx} className="text-pretty leading-relaxed">
+          <li
+            key={idx}
+            className="text-pretty leading-relaxed before:mr-3 before:text-accent before:content-['—']"
+          >
             {renderInline(item, `li${key}-${idx}`)}
           </li>
         ))}
@@ -88,7 +95,7 @@ export function renderRecap(markdown: string): ReactNode {
       blocks.push(
         <h3
           key={`h-${key++}`}
-          className="font-display text-lg font-medium text-marble"
+          className="font-mono-display text-base font-medium tracking-tight text-marble"
         >
           {renderInline(heading[2], `h${key}`)}
         </h3>,
@@ -111,6 +118,8 @@ export function renderRecap(markdown: string): ReactNode {
   flushList();
 
   return (
-    <div className="space-y-5 text-lg leading-relaxed text-marble">{blocks}</div>
+    <div className="space-y-5 font-sans text-lg leading-relaxed text-marble">
+      {blocks}
+    </div>
   );
 }

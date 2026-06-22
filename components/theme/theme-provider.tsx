@@ -27,7 +27,7 @@ type ThemeContext = {
 const Ctx = createContext<ThemeContext | null>(null);
 
 function systemResolved(): Resolved {
-  if (typeof window === "undefined") return "dark";
+  if (typeof window === "undefined") return "light";
   return window.matchMedia("(prefers-color-scheme: dark)").matches
     ? "dark"
     : "light";
@@ -39,7 +39,7 @@ function apply(resolved: Resolved) {
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [preference, setPref] = useState<ThemePref>("system");
-  const [resolved, setResolved] = useState<Resolved>("dark");
+  const [resolved, setResolved] = useState<Resolved>("light");
 
   // hydrate from storage (the no-flash script already applied the DOM value)
   useEffect(() => {

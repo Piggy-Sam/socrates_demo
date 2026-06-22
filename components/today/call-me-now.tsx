@@ -7,9 +7,11 @@ import { Button } from "@/components/ui/button";
 
 type Status = "idle" | "calling" | "ringing" | "error";
 
-// The focal gold action on the Today page: ask Socrates to call you now. POSTs to
-// /api/calls/trigger (Track E). If that route isn't live yet, we fail gracefully
-// with a calm message — never an alarming error, never pressure.
+// A quiet, secondary way to think out loud: ask Socrates to call you. Voice is
+// one feature, never the headline — so this is an outline action, not the
+// page's accent. POSTs to /api/calls/trigger (Track E). If that route isn't
+// live yet, we fail gracefully with a calm message — never alarming, never
+// pressure. The transient "ringing" state borrows the accent as a status cue.
 export function CallMeNow({
   phone,
   className = "",
@@ -63,15 +65,15 @@ export function CallMeNow({
         <div className="inline-flex items-center gap-3 rounded-md border border-hairline-strong bg-raised px-4 py-3">
           <motion.span
             aria-hidden
-            className="grid size-9 place-items-center rounded-full bg-gold/15 text-gold"
+            className="grid size-9 place-items-center rounded-full bg-accent/12 text-accent"
             animate={reduce ? {} : { scale: [1, 1.12, 1] }}
             transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
           >
             <PhoneCall className="size-4" strokeWidth={1.6} />
           </motion.span>
           <div>
-            <p className="label-mono text-gold">calling you</p>
-            <p className="mt-0.5 font-serif text-sm text-marble-dim">{message}</p>
+            <p className="label-mono text-accent">calling you</p>
+            <p className="mt-0.5 font-sans text-sm text-marble-dim">{message}</p>
           </div>
         </div>
       </div>
@@ -81,12 +83,11 @@ export function CallMeNow({
   return (
     <div className={`flex flex-col gap-2 ${className}`}>
       <Button
-        variant="gold"
+        variant="outline"
         size="lg"
         onClick={trigger}
         disabled={calling}
         aria-busy={calling}
-        className="glow-gold"
       >
         {calling ? (
           <>
@@ -108,7 +109,7 @@ export function CallMeNow({
         )}
       </Button>
       {status === "error" && message && (
-        <p className="font-serif text-sm text-marble-dim text-pretty">
+        <p className="font-sans text-sm text-marble-dim text-pretty">
           {message}
         </p>
       )}

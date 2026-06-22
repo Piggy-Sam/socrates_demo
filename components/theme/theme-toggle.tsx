@@ -25,7 +25,7 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
       onClick={cycle}
       aria-label={NEXT_LABEL[preference]}
       title={`Theme: ${preference}`}
-      className={`group inline-flex size-9 items-center justify-center rounded-sm border border-hairline text-marble-dim transition-colors duration-300 hover:border-hairline-strong hover:text-gold ${className}`}
+      className={`group inline-flex size-9 items-center justify-center rounded-sm border border-hairline text-marble-dim transition-colors duration-300 hover:border-hairline-strong hover:text-accent ${className}`}
     >
       <Icon
         className="size-4 transition-transform duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] group-hover:rotate-12"

@@ -1,62 +1,80 @@
 @import "tailwindcss";
 
 /* ───────────────────────────────────────────────────────────────────────────
-   SOCRATES AI — "The Philosopher's Instrument"
-   The examined life (warm humanism, gold) meets a precise instrument (cool
-   technics, cyan/mono), held in an Aegean-night teal dark.
-   Token roles (not literal colors): ink = the ground, marble = the lettering,
-   gold = the soul/the star (rationed), cyan = the machine layer (mono only).
+   SOCRATES AI — "The Instrument"
+   A scientific instrument / refined terminal for thinking. Light-first, high
+   contrast, hairline rules, one profound blue, a dot-matrix motif throughout.
+   Token NAMES are kept stable (low churn); only values change. The retired
+   concepts (gold, cyan) are ALIASED to the single blue accent.
    ─────────────────────────────────────────────────────────────────────────── */
 
-/* dark utilities key off an explicit [data-theme=dark] set before paint */
 @custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
 
-/* ── LIGHT · "Marble / Parchment" (default :root) ───────────────────────────── */
+/* ── LIGHT · "Paper" (default / primary) ────────────────────────────────────── */
 :root {
-  --ink: #f1ede4; /* page ground (paper) */
-  --raised: #fbf8f1; /* surfaces, cards */
-  --raised-2: #f6f1e6; /* a second, slightly cooler surface */
-  --hairline: #e0d9c9; /* borders, dividers */
-  --hairline-strong: #cdc3ad;
-  --marble: #10242c; /* primary text */
-  --marble-dim: #51666a; /* muted text, captions */
-  --gold: #c8941f; /* the accent / the glow (darkened for contrast) */
-  --gold-lit: #e6b450; /* brighter highlight */
-  --cyan: #2e6e6a; /* the technical accent (mono / system layer) */
+  --ink: #f4f6fa; /* page ground — near-white paper */
+  --raised: #ffffff; /* cards, surfaces */
+  --raised-2: #eef1f6; /* input wells, code, second surface */
+  --hairline: #d7dee8; /* rules, borders */
+  --hairline-strong: #bbc5d4;
+  --marble: #0b0f1a; /* near-black ink text */
+  --marble-dim: #5a6678; /* muted text, captions */
+
+  --accent: #0f62fe; /* the one profound blue */
+  --accent-strong: #0a4fd6; /* hover / active */
+  --accent-btn: #0f62fe; /* solid-fill for white text — AA (5:1) */
+
+  /* aliases — legacy utilities (text-gold, .glow-gold, text-cyan) auto-flip */
+  --gold: var(--accent);
+  --gold-lit: var(--accent-strong);
+  --cyan: var(--accent);
 
   /* derived */
-  --star: var(--gold);
-  --star-glow: 230 148 31; /* rgb of gold, for radial alpha */
-  --constellation-line: 46 110 106; /* rgb of cyan */
-  --focus: var(--gold-lit);
-  --selection-bg: rgb(200 148 31 / 0.22);
-  --shadow-color: 16 36 44;
+  --star: var(--accent);
+  --dot: 11 15 26; /* rgb of ink — resting dots */
+  --marble-rgb: 11 15 26; /* rgb of text — the bust figure */
+  --accent-rgb: 15 98 254; /* rgb of accent — active dots, glows, links */
+  --star-glow: var(--accent-rgb);
+  --constellation-line: var(--accent-rgb);
+  --focus: var(--accent);
+  --selection-bg: rgb(15 98 254 / 0.16);
+  --grid-line: rgb(11 15 26 / 0.04); /* faint dot-grid background */
+  --shadow-color: 11 15 26;
 
-  --grain-opacity: 0.025;
+  --grain-opacity: 0;
   color-scheme: light;
 }
 
-/* ── DARK · "Aegean Night" (the hero) ──────────────────────────────────────── */
+/* ── DARK · "Ink Navy" (the invert) ─────────────────────────────────────────── */
 [data-theme="dark"] {
-  --ink: #0a1620; /* deepest background (teal-blue undertone) */
-  --raised: #102530; /* surfaces, cards */
-  --raised-2: #0d1e29;
-  --hairline: #1e3a42; /* subtle teal-gray borders */
-  --hairline-strong: #2a4d56;
-  --marble: #ede6d6; /* warm ivory text — never cool gray */
-  --marble-dim: #8fa3a8; /* muted text, captions */
-  --gold: #e6b450; /* the lamp of inquiry, the star */
-  --gold-lit: #f4d58d; /* brighter highlight */
-  --cyan: #6fb7b3; /* the machine layer */
+  --ink: #0b1220; /* deep blue-black */
+  --raised: #121a2b;
+  --raised-2: #0e1626;
+  --hairline: #1c2840;
+  --hairline-strong: #2a3a57;
+  --marble: #e8edf5; /* cool white */
+  --marble-dim: #8a97ad;
 
-  --star: var(--gold);
-  --star-glow: 230 180 80;
-  --constellation-line: 111 183 179;
-  --focus: var(--gold-lit);
-  --selection-bg: rgb(230 180 80 / 0.18);
+  --accent: #4d7cff; /* lifted blue for contrast on dark */
+  --accent-strong: #7fa2ff;
+  --accent-btn: #3a63e0; /* darker solid-fill so white text hits AA on dark */
+
+  --gold: var(--accent);
+  --gold-lit: var(--accent-strong);
+  --cyan: var(--accent);
+
+  --star: var(--accent);
+  --dot: 138 151 173; /* rgb of marble-dim — resting dots */
+  --marble-rgb: 232 237 245; /* rgb of text — the bust figure */
+  --accent-rgb: 77 124 255;
+  --star-glow: var(--accent-rgb);
+  --constellation-line: var(--accent-rgb);
+  --focus: var(--accent);
+  --selection-bg: rgb(77 124 255 / 0.22);
+  --grid-line: rgb(232 237 245 / 0.04);
   --shadow-color: 0 0 0;
 
-  --grain-opacity: 0.04;
+  --grain-opacity: 0;
   color-scheme: dark;
 }
 
@@ -69,33 +87,39 @@
   --color-hairline-strong: var(--hairline-strong);
   --color-marble: var(--marble);
   --color-marble-dim: var(--marble-dim);
-  --color-gold: var(--gold);
-  --color-gold-lit: var(--gold-lit);
-  --color-cyan: var(--cyan);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-btn: var(--accent-btn);
+  /* legacy aliases so existing utilities keep compiling + now render blue */
+  --color-gold: var(--accent);
+  --color-gold-lit: var(--accent-strong);
+  --color-cyan: var(--accent);
 
-  --font-display: var(--font-fraunces), Georgia, "Times New Roman", serif;
-  --font-serif: var(--font-spectral), Georgia, serif;
+  /* type: Geist for UI + reading, IBM Plex Mono for brand/labels/data */
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", monospace;
+  --font-serif: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif; /* re-pointed: reading is Geist now */
+  --font-display: var(--font-plex-mono), ui-monospace, "SF Mono", monospace; /* re-pointed: titles are Plex */
+  --font-mono-display: var(--font-plex-mono), ui-monospace, "SF Mono", monospace;
+  --font-mono: var(--font-plex-mono), ui-monospace, "SF Mono", monospace;
+  --font-geist-mono-raw: var(--font-geist-mono), ui-monospace, monospace;
 
-  /* type scale — instrument-precise, real contrast */
   --text-2xs: 0.6875rem;
   --text-2xs--line-height: 1rem;
-  --text-2xs--letter-spacing: 0.08em;
+  --text-2xs--letter-spacing: 0.1em;
 
   --tracking-instrument: 0.14em;
 
-  --radius-xs: 2px;
-  --radius-sm: 4px;
-  --radius-md: 7px;
-  --radius-lg: 12px;
+  /* squarer corners read as instrument */
+  --radius-xs: 1px;
+  --radius-sm: 3px;
+  --radius-md: 5px;
+  --radius-lg: 8px;
 
   --ease-instrument: cubic-bezier(0.2, 0.8, 0.2, 1);
 
-  --animate-breathe: breathe 5.5s var(--ease-instrument) infinite;
-  --animate-ignite: ignite 1.1s var(--ease-instrument) both;
-  --animate-fade-rise: fade-rise 0.7s var(--ease-instrument) both;
-  --animate-twinkle: twinkle 4s ease-in-out infinite;
+  --animate-blink: blink 1.05s steps(1) infinite;
+  --animate-fade-rise: fade-rise 0.6s var(--ease-instrument) both;
+  --animate-dot-rise: dot-rise 0.5s var(--ease-instrument) both;
 }
 
 /* ── base ───────────────────────────────────────────────────────────────────── */
@@ -107,33 +131,22 @@
   html {
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
-    font-feature-settings: "ss01", "cv01";
   }
 
   body {
     background-color: var(--ink);
     color: var(--marble);
     font-family: var(--font-sans);
-    /* a faint Aegean depth: a teal-gold aurora low in the night */
-    background-image:
-      radial-gradient(
-        ellipse 90% 60% at 50% -10%,
-        rgb(var(--star-glow) / 0.05),
-        transparent 60%
-      ),
-      radial-gradient(
-        ellipse 70% 50% at 85% 110%,
-        rgb(var(--constellation-line) / 0.045),
-        transparent 55%
-      );
-    background-attachment: fixed;
+    /* faint dot-grid — graph paper for the instrument */
+    background-image: radial-gradient(var(--grid-line) 1px, transparent 1px);
+    background-size: 22px 22px;
+    background-position: -1px -1px;
   }
 
   ::selection {
     background: var(--selection-bg);
   }
 
-  /* visible keyboard focus everywhere — instrument-clear */
   :focus-visible {
     outline: 2px solid var(--focus);
     outline-offset: 2px;
@@ -143,49 +156,30 @@
     outline: none;
   }
 
-  /* serif numerals/old-style where the bank reads like a commonplace book */
-  .font-serif,
-  .font-display {
-    font-feature-settings: "ss01";
-  }
-
   h1, h2, h3 {
     font-family: var(--font-display);
-    font-optical-sizing: auto;
     letter-spacing: -0.01em;
   }
 }
 
 /* ── instrument utilities ───────────────────────────────────────────────────── */
 @layer utilities {
-  /* mono label — the techy readout: uppercase, tracked, cyan */
+  /* mono label — the FIG.-style readout: uppercase, tracked, Plex */
   .label-mono {
-    font-family: var(--font-mono);
+    font-family: var(--font-mono-display);
     font-size: var(--text-2xs);
     line-height: 1rem;
     letter-spacing: var(--tracking-instrument);
     text-transform: uppercase;
-    color: var(--cyan);
+    color: var(--marble-dim);
   }
 
-  /* film grain — atmosphere, fixed, non-interactive */
-  .grain::after {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: 9999;
-    pointer-events: none;
-    opacity: var(--grain-opacity);
-    mix-blend-mode: overlay;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 240 240' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  }
-
-  /* the gold glow behind a focal element (the lamp of inquiry) */
-  .glow-gold {
+  /* a crisp accent ring (replaces the old gold glow) */
+  .glow-gold,
+  .ring-accent {
     box-shadow:
-      0 0 0 1px rgb(var(--star-glow) / 0.25),
-      0 0 24px -4px rgb(var(--star-glow) / 0.35),
-      0 0 60px -12px rgb(var(--star-glow) / 0.25);
+      0 0 0 1px rgb(var(--accent-rgb) / 0.35),
+      0 0 18px -10px rgb(var(--accent-rgb) / 0.6);
   }
 
   .hairline-x {
@@ -199,66 +193,50 @@
   .text-pretty {
     text-wrap: pretty;
   }
+
+  /* the blinking terminal cursor block */
+  .cursor-blink {
+    display: inline-block;
+    background: var(--accent);
+    animation: var(--animate-blink);
+  }
 }
 
 /* ── motion ─────────────────────────────────────────────────────────────────── */
-@keyframes breathe {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 0.92;
-  }
-  50% {
-    transform: scale(1.06);
-    opacity: 1;
-  }
-}
-
-@keyframes ignite {
-  0% {
-    opacity: 0;
-    transform: scale(0.4);
-    filter: blur(6px);
-  }
-  60% {
-    opacity: 1;
-    filter: blur(0);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
+@keyframes blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
 }
 
 @keyframes fade-rise {
-  0% {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes twinkle {
-  0%, 100% {
-    opacity: 0.55;
-  }
-  50% {
-    opacity: 1;
-  }
+@keyframes dot-rise {
+  from { opacity: 0; transform: scale(0.5); }
+  to { opacity: 1; transform: scale(1); }
 }
 
-@keyframes draw-line {
-  from {
-    stroke-dashoffset: var(--line-length, 100);
-  }
-  to {
-    stroke-dashoffset: 0;
-  }
+/* a calm radial breathing for the dot-orb (driven per-dot by delay) */
+@keyframes dot-wave {
+  0%, 100% { opacity: 0.4; transform: scale(0.72); }
+  50% { opacity: 1; transform: scale(1); }
 }
 
-/* respect reduced motion — static sky, no pulse (design law) */
+/* subtle always-on shimmer for the small SVG bust mark (per-dot delay) */
+@keyframes dot-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* kept for the landing ignite moment */
+@keyframes ignite {
+  0% { opacity: 0; transform: scale(0.6); filter: blur(4px); }
+  100% { opacity: 1; transform: scale(1); filter: blur(0); }
+}
+
+/* respect reduced motion — static everything (design law) */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

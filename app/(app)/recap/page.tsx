@@ -50,8 +50,10 @@ export default async function RecapPage() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <header className="mb-10">
-        <p className="label-mono mb-3">Weekly recap</p>
+      <header className="mb-10 border-b border-hairline pb-6">
+        <p className="label-mono mb-3">
+          <span className="text-accent">&rsaquo;</span> Weekly recap
+        </p>
         <h1 className="text-balance font-display text-3xl font-medium tracking-tight text-marble sm:text-4xl">
           The week, reflected back.
         </h1>
@@ -59,19 +61,22 @@ export default async function RecapPage() {
 
       {recap ? (
         <section>
-          <p className="label-mono mb-6 text-marble-dim">
-            {RANGE_FMT.format(new Date(recap.periodStart))} &ndash;{" "}
+          <p className="label-mono mb-6">
+            FIG.01 &mdash; {RANGE_FMT.format(new Date(recap.periodStart))} &ndash;{" "}
             {RANGE_FMT.format(new Date(recap.periodEnd))}
           </p>
-          <article className="font-serif">{renderRecap(recap.content)}</article>
+          <article className="border-l border-hairline pl-6 font-sans sm:pl-8">
+            {renderRecap(recap.content)}
+          </article>
         </section>
       ) : (
-        <section className="rounded-lg border border-hairline bg-raised/40 p-8 sm:p-10">
-          <p className="text-pretty font-serif text-lg leading-relaxed text-marble">
+        <section className="rounded-md border border-hairline bg-raised p-8 sm:p-10">
+          <p className="label-mono mb-4">No reflection on file</p>
+          <p className="text-pretty font-sans text-lg leading-relaxed text-marble">
             Nothing gathered for this week yet. When you&rsquo;re ready, I&rsquo;ll
             read back over what you&rsquo;ve been turning over &mdash; the threads
             that keep returning, the tensions still open &mdash; and hand it back
-            to you.
+            to you, so you can see your own thinking more clearly.
           </p>
           <div className="mt-8">
             <GenerateRecap />

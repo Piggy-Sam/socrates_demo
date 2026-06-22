@@ -10,13 +10,14 @@ export default async function ChatPage() {
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col">
       <header className="mb-6 sm:mb-8">
-        <p className="label-mono mb-3">Think out loud</p>
+        <p className="label-mono mb-3">&rsaquo; think out loud, in text</p>
         <h1 className="font-display text-3xl font-medium tracking-tight text-marble sm:text-4xl">
           Chat
         </h1>
-        <p className="text-pretty mt-3 max-w-prose font-serif text-marble-dim">
-          When you can&rsquo;t speak aloud, write. Socrates listens the same
-          way here &mdash; asking, mirroring, mostly staying out of your way.
+        <p className="text-pretty mt-3 max-w-prose font-sans text-marble-dim">
+          Writing is thinking made visible. The same instrument, in text
+          &mdash; Socrates asks, mirrors, and mostly keeps out of your way, so
+          the page works on your own mind.
         </p>
       </header>
 

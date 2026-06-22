@@ -47,7 +47,7 @@ export function GenerateRecap() {
         initial={reduce ? false : { opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.7, ease: [0.2, 0.8, 0.2, 1] }}
-        className="font-serif"
+        className="border-l border-hairline pl-6 font-sans sm:pl-8"
       >
         {renderRecap(content)}
       </motion.article>
@@ -62,10 +62,17 @@ export function GenerateRecap() {
         onClick={generate}
         disabled={state === "loading"}
       >
-        {state === "loading" ? "Gathering the week..." : "Gather the week"}
+        {state === "loading" ? (
+          <>
+            Gathering the week
+            <span className="cursor-blink ml-0.5 inline-block h-[0.95em] w-[0.5em] align-[-0.08em]" />
+          </>
+        ) : (
+          "Gather the week"
+        )}
       </Button>
       {state === "error" && (
-        <p className="font-serif text-sm text-marble-dim">{error}</p>
+        <p className="font-sans text-sm text-marble-dim">{error}</p>
       )}
     </div>
   );
