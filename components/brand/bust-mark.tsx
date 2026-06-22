@@ -1,24 +1,26 @@
-import { BUST_DOTS, BUST_VIEWBOX } from "./bust-dots";
+import { BUST_DOTS_COARSE, BUST_VIEWBOX_COARSE } from "./bust-dots";
 
-const [, , VW, VH] = BUST_VIEWBOX.split(" ").map(Number);
+const [, , VW, VH] = BUST_VIEWBOX_COARSE.split(" ").map(Number);
 
 /**
- * The dot-matrix bust — a radius-modulated halftone of the classical bust,
- * single `currentColor` so it flips with the theme. Generated from the
- * reference by scripts/gen-bust.mjs. The mark of the instrument.
+ * The small dot-matrix mark of Socrates' face (coarse set, crisp at logo sizes),
+ * single `currentColor`. Carries the dynamism DNA via a gentle per-dot opacity
+ * shimmer (disabled under prefers-reduced-motion by the global rule).
  */
 export function BustMark({
   size = 28,
   className = "",
   title,
+  animated = true,
 }: {
   size?: number;
   className?: string;
   title?: string;
+  animated?: boolean;
 }) {
   return (
     <svg
-      viewBox={BUST_VIEWBOX}
+      viewBox={BUST_VIEWBOX_COARSE}
       width={size}
       height={Math.round((size * VH) / VW)}
       fill="currentColor"
@@ -27,8 +29,21 @@ export function BustMark({
       aria-hidden={title ? undefined : true}
       className={className}
     >
-      {BUST_DOTS.map(([cx, cy, r], i) => (
-        <circle key={i} cx={cx} cy={cy} r={r} />
+      {BUST_DOTS_COARSE.map(([cx, cy, r], i) => (
+        <circle
+          key={i}
+          cx={cx}
+          cy={cy}
+          r={r}
+          style={
+            animated
+              ? {
+                  animation: `dot-pulse ${(2.6 + (i % 5) * 0.5).toFixed(2)}s ease-in-out infinite`,
+                  animationDelay: `${((i * 0.21) % 3).toFixed(2)}s`,
+                }
+              : undefined
+          }
+        />
       ))}
     </svg>
   );

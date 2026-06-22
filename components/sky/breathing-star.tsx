@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
-import { useReducedMotion } from "motion/react";
+import { useEffect, useRef } from "react";
+import { wave, mix, rgba, readRGBVar, type RGB } from "@/lib/dots";
 
 export type StarState =
   | "idle"
@@ -19,26 +19,56 @@ type Props = {
   className?: string;
 };
 
-// Per-state character of the breathing wave. Calm by design — presence, not metering.
-const WAVE: Record<StarState, { dur: number; bright: number; amp: number }> = {
-  idle: { dur: 5.4, bright: 0.62, amp: 1 },
-  listening: { dur: 3.6, bright: 0.92, amp: 1.05 },
-  speaking: { dur: 2.3, bright: 1, amp: 1.12 },
-  thinking: { dur: 7, bright: 0.42, amp: 0.7 },
-  ended: { dur: 6, bright: 0.28, amp: 0.6 },
+// Per-state character. Each is visibly distinct (see energy() below).
+const CHAR: Record<StarState, { bright: number; scale: number }> = {
+  idle: { bright: 0.85, scale: 0.95 },
+  listening: { bright: 1, scale: 1.0 },
+  speaking: { bright: 1, scale: 1.06 },
+  thinking: { bright: 0.62, scale: 0.9 },
+  ended: { bright: 0.42, scale: 0.84 },
 };
 
-const N = 9; // grid is N×N
+const N = 11;
 const C = (N - 1) / 2;
-const R = 4.45; // radius (in cells) — clips the square lattice into an orb
+const RGRID = 5.2;
 
-type Dot = { r: number; c: number; dist: number };
+// energy 0..1 for a dot at normalized radius rr and grid pos (gx,gy) at time t
+function energy(
+  state: StarState,
+  rr: number,
+  gx: number,
+  gy: number,
+  t: number,
+): number {
+  let e: number;
+  switch (state) {
+    case "listening": // receptive — waves ripple INWARD, alert & bright
+      e = 0.55 + 0.45 * Math.sin(rr * 7 + t * 3.0);
+      break;
+    case "speaking": // energy OUT — concentric rings emanate outward, lively
+      e =
+        0.5 +
+        0.35 * Math.sin(rr * 9 - t * 5.2) +
+        0.18 * Math.sin(rr * 16 - t * 8);
+      break;
+    case "thinking": // searching — turbulent, non-radial shimmer, dim
+      e = 0.32 + 0.34 * wave(gx * 0.9, gy * 0.9, t * 0.9) +
+        0.12 * Math.sin(rr * 3 - t * 0.8);
+      break;
+    case "ended": // settling — low, slow, nearly still
+      e = 0.3 + 0.12 * Math.sin(t * 0.7 - rr * 2);
+      break;
+    default: // idle — calm radial breathing
+      e = 0.46 + 0.4 * Math.sin(rr * 5.5 - t * 1.25);
+  }
+  return Math.max(0, Math.min(1, e));
+}
 
 /**
- * Socrates' presence — a dot-matrix orb. A round lattice of dots that breathes
- * in a calm wave rippling out from the center; state changes the rhythm and
- * brightness. Never a VU meter. Echoes the dot-matrix bust + field.
- * API preserved (BreathingStar / StarState) so all callers are untouched.
+ * Socrates' presence — a dot-matrix orb on canvas. Always alive, with a truly
+ * distinct rhythm per state (idle breathes · listening ripples inward ·
+ * speaking emanates outward · thinking searches · ended settles). Shares the
+ * dot-matrix DNA. API preserved so all callers are untouched.
  */
 export function BreathingStar({
   state = "idle",
@@ -46,62 +76,97 @@ export function BreathingStar({
   size = 160,
   className = "",
 }: Props) {
-  const reduce = useReducedMotion();
-  const cfg = WAVE[state];
-  const amp = Math.max(0, Math.min(1, level));
+  const ref = useRef<HTMLCanvasElement>(null);
+  const stateRef = useRef(state);
+  const levelRef = useRef(level);
+  stateRef.current = state;
+  levelRef.current = Math.max(0, Math.min(1, level));
 
-  const dots = useMemo<Dot[]>(() => {
-    const out: Dot[] = [];
-    for (let r = 0; r < N; r++) {
-      for (let c = 0; c < N; c++) {
-        const dist = Math.hypot(r - C, c - C);
-        if (dist > R) continue;
-        out.push({ r, c, dist });
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const reduce = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    let raf = 0;
+    const start = performance.now();
+    let accent: RGB = [77, 124, 255];
+    const readColors = () => {
+      accent = readRGBVar("--accent-rgb", accent);
+    };
+
+    const cells: { gx: number; gy: number; rr: number }[] = [];
+    for (let j = 0; j < N; j++)
+      for (let i = 0; i < N; i++) {
+        const dist = Math.hypot(i - C, j - C);
+        if (dist > RGRID) continue;
+        cells.push({ gx: i, gy: j, rr: dist / RGRID });
       }
-    }
-    return out;
-  }, []);
 
-  const dotPx = size * 0.072;
-  const scale = cfg.amp + amp * 0.06;
+    const setup = () => {
+      canvas.width = Math.floor(size * dpr);
+      canvas.height = Math.floor(size * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+
+    const frame = (t: number) => {
+      const st = stateRef.current;
+      const lvl = levelRef.current;
+      const ch = CHAR[st];
+      ctx.clearRect(0, 0, size, size);
+      const step = (size * 0.84) / (N - 1);
+      const ox = size / 2 - C * step * ch.scale;
+      const oy = size / 2 - C * step * ch.scale;
+      const baseR = size * 0.026;
+      const lit = mix(accent, [255, 255, 255], 0.35);
+
+      for (const { gx, gy, rr } of cells) {
+        const e = energy(st, rr, gx, gy, t);
+        const x = ox + gx * step * ch.scale;
+        const y = oy + gy * step * ch.scale;
+        const boost = (st === "speaking" || st === "listening") ? lvl * 0.2 : 0;
+        const radius = baseR * (0.4 + 1.05 * e) * ch.scale;
+        const alpha = Math.min(1, (0.18 + 0.82 * e) * ch.bright + boost);
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, 6.2832);
+        ctx.fillStyle = rgba(mix(accent, lit, e * 0.4), alpha);
+        ctx.fill();
+      }
+    };
+
+    const loop = (now: number) => {
+      frame((now - start) / 1000);
+      raf = requestAnimationFrame(loop);
+    };
+
+    readColors();
+    setup();
+    const mo = new MutationObserver(readColors);
+    mo.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
+
+    if (reduce) frame(0);
+    else raf = requestAnimationFrame(loop);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      mo.disconnect();
+    };
+  }, [size]);
 
   return (
-    <div
-      className={`relative ${className}`}
-      style={{
-        width: size,
-        height: size,
-        transform: `scale(${scale})`,
-        opacity: cfg.bright,
-        transition: "opacity 0.6s var(--ease-instrument)",
-      }}
+    <canvas
+      ref={ref}
       role="img"
       aria-label={`Socrates is ${state === "ended" ? "resting" : state}`}
-    >
-      {dots.map(({ r, c, dist }) => {
-        // static brightness (radial falloff) — also the reduced-motion view
-        const base = (1 - dist / R) * 0.6 + 0.3;
-        const delay = -(dist * 0.26); // negative → wave already in motion, ripples out
-        return (
-          <span
-            key={`${r}-${c}`}
-            className="absolute rounded-full"
-            style={{
-              left: `${(c / (N - 1)) * 100}%`,
-              top: `${(r / (N - 1)) * 100}%`,
-              width: dotPx,
-              height: dotPx,
-              marginLeft: -dotPx / 2,
-              marginTop: -dotPx / 2,
-              background: "var(--accent)",
-              opacity: base,
-              animation: reduce
-                ? undefined
-                : `dot-wave ${cfg.dur}s var(--ease-instrument) ${delay}s infinite`,
-            }}
-          />
-        );
-      })}
-    </div>
+      className={className}
+      style={{ width: size, height: size, display: "block" }}
+    />
   );
 }

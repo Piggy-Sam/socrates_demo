@@ -1,8 +1,8 @@
 // One-off: turn the reference bust into a radius-modulated halftone dot lattice
-// of the FACE (cropped head). Emits a HI-RES set (components/brand/bust-dots.ts
-// + app/apple-icon.png, used by the wordmark + landing centerpiece) and a COARSE
-// set (app/icon.svg, legible as a tiny tab favicon). Writes preview ramps to /tmp.
-// Run: node scripts/gen-bust.mjs
+// of Socrates' FACE, clipped to a clean oval silhouette (rounded bottom, no
+// lonely dots). Emits HI-RES + COARSE dot sets to components/brand/bust-dots.ts
+// (animated on-page by the BustField), apple-icon.png (hi-res) and icon.svg
+// (coarse, tiny tab favicon). Preview ramps to /tmp. Run: node scripts/gen-bust.mjs
 import sharp from "sharp";
 import { writeFileSync } from "node:fs";
 
@@ -10,11 +10,12 @@ const SRC =
   process.argv[2] ||
   "/Users/yancun/.claude/image-cache/627af931-eccc-4087-9cc1-86b4b3df7798/2.png";
 
-// Crop to the FACE of Socrates (head: forehead → beard), not the whole bust.
-const CROP = { left: 70, top: 10, width: 125, height: 120 };
-const BG_CUT = 0.17; // darkness below this = background, no dot
-const GAMMA = 0.85; // tonal curve for radius
-const MAXR = 0.6; // max dot radius in cell units
+// Crop to the FACE of Socrates (forehead → bottom of beard; trims neck/shoulder).
+const CROP = { left: 70, top: 8, width: 125, height: 110 };
+const BG_CUT = 0.17;
+const GAMMA = 0.85;
+const MAXR = 0.6;
+const ELLIPSE = { rx: 1.14, ry: 1.12 }; // generous; rounds the BOTTOM only
 
 async function buildDots(GW) {
   const GH = Math.round(GW * (CROP.height / CROP.width));
@@ -26,68 +27,99 @@ async function buildDots(GW) {
     .raw()
     .toBuffer({ resolveWithObject: true });
 
-  const dots = [];
-  let minX = GW, minY = GH, maxX = 0, maxY = 0;
-  for (let y = 0; y < GH; y++) {
+  let cells = [];
+  for (let y = 0; y < GH; y++)
     for (let x = 0; x < GW; x++) {
       const dark = 1 - data[y * GW + x] / 255;
       if (dark < BG_CUT) continue;
-      const r = Math.min(MAXR, Math.pow(dark, GAMMA) * MAXR + 0.06);
-      dots.push([+(x + 0.5).toFixed(2), +(y + 0.5).toFixed(2), +r.toFixed(2)]);
-      minX = Math.min(minX, x); minY = Math.min(minY, y);
-      maxX = Math.max(maxX, x + 1); maxY = Math.max(maxY, y + 1);
+      cells.push({ x, y, dark });
     }
+
+  const bbox = (cs) => {
+    let a = 1e9, b = 1e9, c = -1e9, d = -1e9;
+    for (const p of cs) {
+      a = Math.min(a, p.x); b = Math.min(b, p.y);
+      c = Math.max(c, p.x + 1); d = Math.max(d, p.y + 1);
+    }
+    return { minX: a, minY: b, maxX: c, maxY: d };
+  };
+
+  // round the BOTTOM only: in the lower half, clip to an ellipse so the hem is
+  // a smooth convex curve. Top/sides kept natural (just pruned below).
+  let bb = bbox(cells);
+  const ecx = (bb.minX + bb.maxX) / 2, ecy = (bb.minY + bb.maxY) / 2;
+  const rx = ((bb.maxX - bb.minX) / 2) * ELLIPSE.rx;
+  const ry = ((bb.maxY - bb.minY) / 2) * ELLIPSE.ry;
+  cells = cells.filter((p) => {
+    const cy = p.y + 0.5;
+    if (cy <= ecy) return true; // upper half: leave the head/face alone
+    const nx = (p.x + 0.5 - ecx) / rx;
+    const ny = (cy - ecy) / ry;
+    return nx * nx + ny * ny <= 1;
+  });
+
+  // prune lonely / ragged-edge dots (fewer than 3 of 8 neighbours present)
+  const key = (x, y) => x + "," + y;
+  for (let pass = 0; pass < 2; pass++) {
+    const set = new Set(cells.map((p) => key(p.x, p.y)));
+    cells = cells.filter((p) => {
+      let n = 0;
+      for (let dy = -1; dy <= 1; dy++)
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          if (set.has(key(p.x + dx, p.y + dy))) n++;
+        }
+      return n >= 3;
+    });
   }
+
+  bb = bbox(cells);
   const pad = 0.8;
-  const vb = `${(minX - pad).toFixed(2)} ${(minY - pad).toFixed(2)} ${(maxX - minX + pad * 2).toFixed(2)} ${(maxY - minY + pad * 2).toFixed(2)}`;
+  const vb = `${(bb.minX - pad).toFixed(2)} ${(bb.minY - pad).toFixed(2)} ${(bb.maxX - bb.minX + pad * 2).toFixed(2)} ${(bb.maxY - bb.minY + pad * 2).toFixed(2)}`;
+  const dots = cells.map((p) => [
+    +(p.x + 0.5).toFixed(2),
+    +(p.y + 0.5).toFixed(2),
+    +Math.min(MAXR, Math.pow(p.dark, GAMMA) * MAXR + 0.08).toFixed(2),
+  ]);
   const circles = dots.map(([cx, cy, r]) => `<circle cx="${cx}" cy="${cy}" r="${r}"/>`).join("");
   return { GW, GH, vb, dots, circles };
 }
 
-function svg(b, fg, bg) {
-  const [x, y, w, h] = b.vb.split(" ");
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${b.vb}">${bg ? `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${bg}"/>` : ""}<g fill="${fg}">${b.circles}</g></svg>`;
+function squareSvg(b, fg, bg) {
+  const [x, y, w, h] = b.vb.split(" ").map(Number);
+  const side = Math.max(w, h) + 4;
+  const ox = x - (side - w) / 2, oy = y - (side - h) / 2;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${ox.toFixed(2)} ${oy.toFixed(2)} ${side.toFixed(2)} ${side.toFixed(2)}">${bg ? `<rect x="${ox.toFixed(2)}" y="${oy.toFixed(2)}" width="${side.toFixed(2)}" height="${side.toFixed(2)}" fill="${bg}"/>` : ""}<g fill="${fg}">${b.circles}</g></svg>`;
 }
 
-// ── HI-RES face → bust-dots.ts (wordmark + centerpiece) + apple-icon ──────────
-const HI = await buildDots(42);
+const HI = await buildDots(46);
+const CO = await buildDots(24);
+
 writeFileSync(
   "components/brand/bust-dots.ts",
-  `// AUTO-GENERATED by scripts/gen-bust.mjs — the FACE of Socrates as a hi-res\n// radius-modulated halftone lattice; render each as <circle fill="currentColor">.\nexport const BUST_VIEWBOX = "${HI.vb}";\nexport const BUST_DOTS: [number, number, number][] = ${JSON.stringify(HI.dots)};\n`,
+  `// AUTO-GENERATED by scripts/gen-bust.mjs — Socrates' FACE as a radius-modulated\n// halftone lattice, clipped to a clean oval. HI-RES (centerpiece/wordmark) +\n// COARSE (tiny favicon). Rendered/animated by the BustField + BustMark.\nexport const BUST_VIEWBOX = "${HI.vb}";\nexport const BUST_DOTS: [number, number, number][] = ${JSON.stringify(HI.dots)};\nexport const BUST_VIEWBOX_COARSE = "${CO.vb}";\nexport const BUST_DOTS_COARSE: [number, number, number][] = ${JSON.stringify(CO.dots)};\n`,
 );
-console.log(`hi-res ${HI.GW}x${HI.GH} · ${HI.dots.length} dots`);
+console.log(`hi-res ${HI.GW}: ${HI.dots.length} dots · coarse ${CO.GW}: ${CO.dots.length} dots`);
 
-// apple-icon: hi-res face centered square on paper
-{
-  const [x, y, w, h] = HI.vb.split(" ").map(Number);
-  const side = Math.max(w, h) + 5;
-  const ox = x - (side - w) / 2, oy = y - (side - h) / 2;
-  const apple = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${ox.toFixed(2)} ${oy.toFixed(2)} ${side.toFixed(2)} ${side.toFixed(2)}"><rect x="${ox.toFixed(2)}" y="${oy.toFixed(2)}" width="${side.toFixed(2)}" height="${side.toFixed(2)}" fill="#F4F6FA"/><g fill="#0B0F1A">${HI.circles}</g></svg>`;
-  await sharp(Buffer.from(apple)).resize(180, 180).png().toFile("app/apple-icon.png");
-}
-
-// ── COARSE face → icon.svg (tiny tab favicon, prefers-color-scheme) ───────────
-const CO = await buildDots(20);
+await sharp(Buffer.from(squareSvg(HI, "#0B0F1A", "#F4F6FA"))).resize(180, 180).png().toFile("app/apple-icon.png");
 writeFileSync(
   "app/icon.svg",
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${CO.vb}"><style>circle{fill:#0B0F1A}@media (prefers-color-scheme:dark){circle{fill:#E8ECF4}}</style>${CO.circles}</svg>`,
 );
-console.log(`coarse ${CO.GW}x${CO.GH} · ${CO.dots.length} dots → icon.svg`);
 
-// ── preview ramps (both sets) ─────────────────────────────────────────────────
-const SIZES = [180, 96, 48, 32, 16];
+// preview ramp (hi-res, dark + light)
+const SIZES = [220, 120, 64, 32, 16];
 const PAD = 22;
-async function ramp(b, fg, bgHex, bgObj, out) {
-  const s = Buffer.from(svg(b, fg, bgHex));
+async function ramp(b, fg, bgObj, out) {
+  const s = Buffer.from(squareSvg(b, fg, `rgb(${bgObj.r},${bgObj.g},${bgObj.b})`));
   const comps = [];
   let x = PAD;
   for (const px of SIZES) {
-    comps.push({ input: await sharp(s).resize(px, px, { fit: "contain", background: bgObj }).png().toBuffer(), top: PAD + (180 - px), left: x });
+    comps.push({ input: await sharp(s).resize(px, px).png().toBuffer(), top: PAD + (220 - px), left: x });
     x += px + PAD;
   }
-  await sharp({ create: { width: x, height: 180 + PAD * 2, channels: 3, background: bgObj } }).composite(comps).png().toFile(out);
+  await sharp({ create: { width: x, height: 220 + PAD * 2, channels: 3, background: bgObj } }).composite(comps).png().toFile(out);
 }
-await ramp(HI, "#0B0F1A", "#F4F6FA", { r: 244, g: 246, b: 250 }, "/tmp/bust-hi-light.png");
-await ramp(HI, "#E8ECF4", "#0B1220", { r: 11, g: 18, b: 32 }, "/tmp/bust-hi-dark.png");
-await ramp(CO, "#0B0F1A", "#F4F6FA", { r: 244, g: 246, b: 250 }, "/tmp/bust-coarse.png");
-console.log("previews: /tmp/bust-hi-{light,dark}.png, /tmp/bust-coarse.png");
+await ramp(HI, "#E8ECF4", { r: 11, g: 18, b: 32 }, "/tmp/bust2-dark.png");
+await ramp(HI, "#0B0F1A", { r: 244, g: 246, b: 250 }, "/tmp/bust2-light.png");
+console.log("previews: /tmp/bust2-{dark,light}.png");

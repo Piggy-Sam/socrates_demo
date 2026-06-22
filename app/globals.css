@@ -32,6 +32,7 @@
   /* derived */
   --star: var(--accent);
   --dot: 11 15 26; /* rgb of ink — resting dots */
+  --marble-rgb: 11 15 26; /* rgb of text — the bust figure */
   --accent-rgb: 15 98 254; /* rgb of accent — active dots, glows, links */
   --star-glow: var(--accent-rgb);
   --constellation-line: var(--accent-rgb);
@@ -64,6 +65,7 @@
 
   --star: var(--accent);
   --dot: 138 151 173; /* rgb of marble-dim — resting dots */
+  --marble-rgb: 232 237 245; /* rgb of text — the bust figure */
   --accent-rgb: 77 124 255;
   --star-glow: var(--accent-rgb);
   --constellation-line: var(--accent-rgb);
@@ -220,6 +222,12 @@
 @keyframes dot-wave {
   0%, 100% { opacity: 0.4; transform: scale(0.72); }
   50% { opacity: 1; transform: scale(1); }
+}
+
+/* subtle always-on shimmer for the small SVG bust mark (per-dot delay) */
+@keyframes dot-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
 }
 
 /* kept for the landing ignite moment */

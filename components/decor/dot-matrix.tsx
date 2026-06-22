@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { wave, mix, rgba, smooth, readRGBVar, type RGB } from "@/lib/dots";
 
 type Props = {
   className?: string;
@@ -11,15 +12,15 @@ type Props = {
 };
 
 /**
- * The signature decorative language: a living dot-matrix. A faint grid of dots
- * breathes with slow overlapping waves and comes alive around the pointer —
- * dots near the cursor brighten, swell, and are gently repelled, like a lens
- * passing over the field. Canvas-based, DPR-aware, theme-aware, and static
- * under prefers-reduced-motion. Decorative only (pointer-events: none).
+ * The living dot-matrix — the signature decorative language. A faint grid of
+ * sizeable dots that ALWAYS breathes: each dot pulses in size, opacity, and
+ * colour from overlapping waves (its own rhythm). The cursor is a local lens —
+ * nearby dots brighten and swell, with only a slight, elegant displacement.
+ * Canvas-based, DPR/theme-aware, static under prefers-reduced-motion.
  */
 export function DotMatrix({
   className = "",
-  spacing = 28,
+  spacing = 30,
   intensity = 1,
 }: Props) {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -35,22 +36,16 @@ export function DotMatrix({
     ).matches;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
 
-    let w = 0,
-      h = 0,
-      cols = 0,
-      rows = 0,
-      raf = 0;
+    let w = 0, h = 0, cols = 0, rows = 0, raf = 0;
     const start = performance.now();
     const ptr = { x: -9999, y: -9999, tx: -9999, ty: -9999, active: false };
-    let accent: [number, number, number] = [15, 98, 254];
+    let accent: RGB = [15, 98, 254];
+    let lit: RGB = [120, 170, 255];
 
-    const readAccent = () => {
-      const v = getComputedStyle(document.documentElement)
-        .getPropertyValue("--accent-rgb")
-        .trim();
-      const parts = v.split(/\s+/).map(Number);
-      if (parts.length === 3 && parts.every((n) => !Number.isNaN(n)))
-        accent = parts as [number, number, number];
+    const readColors = () => {
+      accent = readRGBVar("--accent-rgb", accent);
+      // a lighter tint for wave/cursor peaks (colour dynamism)
+      lit = mix(accent, [255, 255, 255], 0.4);
     };
 
     const resize = () => {
@@ -66,47 +61,42 @@ export function DotMatrix({
 
     const drawStatic = () => {
       ctx.clearRect(0, 0, w, h);
-      const [r, g, b] = accent;
       for (let j = 0; j < rows; j++)
         for (let i = 0; i < cols; i++) {
           ctx.beginPath();
-          ctx.arc(i * spacing, j * spacing, 1.1, 0, 6.2832);
-          ctx.fillStyle = `rgba(${r},${g},${b},${0.13 * intensity})`;
+          ctx.arc(i * spacing, j * spacing, 1.7, 0, 6.2832);
+          ctx.fillStyle = rgba(accent, 0.14 * intensity);
           ctx.fill();
         }
     };
 
-    const PR = 180;
+    const PR = 150;
     const draw = (now: number) => {
       const t = (now - start) / 1000;
-      ptr.x += (ptr.tx - ptr.x) * 0.1;
-      ptr.y += (ptr.ty - ptr.y) * 0.1;
+      ptr.x += (ptr.tx - ptr.x) * 0.12;
+      ptr.y += (ptr.ty - ptr.y) * 0.12;
       ctx.clearRect(0, 0, w, h);
-      const [ar, ag, ab] = accent;
       for (let j = 0; j < rows; j++) {
         for (let i = 0; i < cols; i++) {
           const x = i * spacing;
           const y = j * spacing;
-          // two overlapping slow waves — the field breathing
-          const wave =
-            (Math.sin(x * 0.012 + y * 0.012 - t * 0.85) * 0.5 + 0.5) * 0.7 +
-            (Math.sin(x * 0.022 - y * 0.017 + t * 0.5) * 0.5 + 0.5) * 0.3;
-          let radius = 0.85 + wave * 1.1;
-          let alpha = 0.08 + wave * 0.1;
-          let ox = 0,
-            oy = 0;
+          // always-on DNA: size + opacity + colour from the wave
+          const e = wave(x * 0.045, y * 0.045, t);
+          let radius = 1.5 + e * 2.2; // bigger dots
+          let alpha = 0.07 + e * 0.13;
+          let colorK = e * 0.5; // toward the lighter tint at peaks
+          let ox = 0, oy = 0;
 
           if (ptr.active) {
             const dx = x - ptr.x;
             const dy = y - ptr.y;
-            const d2 = dx * dx + dy * dy;
-            if (d2 < PR * PR) {
-              const d = Math.sqrt(d2);
-              const f = 1 - d / PR;
-              const fe = f * f * (3 - 2 * f); // smoothstep falloff
-              radius += fe * 3.4;
-              alpha += fe * 0.6;
-              const rep = (fe * 14) / Math.max(d, 14);
+            const d = Math.hypot(dx, dy);
+            if (d < PR) {
+              const fe = smooth(1 - d / PR);
+              radius += fe * 2.6; // mostly size...
+              alpha += fe * 0.5; // ...and opacity
+              colorK = Math.min(1, colorK + fe * 0.8); // ...and colour
+              const rep = (fe * 3) / Math.max(d, 18); // only a slight nudge
               ox = dx * rep;
               oy = dy * rep;
             }
@@ -114,7 +104,7 @@ export function DotMatrix({
 
           ctx.beginPath();
           ctx.arc(x + ox, y + oy, radius, 0, 6.2832);
-          ctx.fillStyle = `rgba(${ar},${ag},${ab},${Math.min(0.8, alpha) * intensity})`;
+          ctx.fillStyle = rgba(mix(accent, lit, colorK), Math.min(0.85, alpha) * intensity);
           ctx.fill();
         }
       }
@@ -122,12 +112,10 @@ export function DotMatrix({
     };
 
     const onMove = (e: PointerEvent) => {
-      // map viewport coords into canvas-local space (works framed or full-bleed)
       const rect = canvas.getBoundingClientRect();
       const lx = e.clientX - rect.left;
       const ly = e.clientY - rect.top;
-      const inside = lx >= -PR && ly >= -PR && lx <= w + PR && ly <= h + PR;
-      if (!inside) {
+      if (lx < -PR || ly < -PR || lx > w + PR || ly > h + PR) {
         ptr.active = false;
         return;
       }
@@ -141,15 +129,13 @@ export function DotMatrix({
     };
     const onLeave = () => {
       ptr.active = false;
-      ptr.tx = -9999;
-      ptr.ty = -9999;
     };
 
-    readAccent();
+    readColors();
     resize();
     const ro = new ResizeObserver(resize);
     ro.observe(canvas);
-    const mo = new MutationObserver(readAccent);
+    const mo = new MutationObserver(readColors);
     mo.observe(document.documentElement, {
       attributes: true,
       attributeFilter: ["data-theme"],
