@@ -210,9 +210,7 @@ export function ChatClient({ displayName }: { displayName: string | null }) {
       </div>
 
       {error && (
-        <p className="label-mono mb-3 text-[color:var(--gold)] opacity-80">
-          {error}
-        </p>
+        <p className="label-mono mb-3 text-marble-dim">{error}</p>
       )}
 
       {/* composer */}

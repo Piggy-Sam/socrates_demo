@@ -61,7 +61,9 @@ export default function Home() {
         </p>
 
         <div className="mt-11 flex flex-col items-center gap-3 sm:flex-row">
-          <LinkButton href="/design" size="lg" variant="gold">
+          {/* the breathing star above is the one gold focal point — keep the
+              CTA outline so it doesn't compete (SPEC §9 gold rationing) */}
+          <LinkButton href="/login" size="lg" variant="outline">
             Begin the dialogue
           </LinkButton>
           <LinkButton href="/design" size="lg" variant="ghost">

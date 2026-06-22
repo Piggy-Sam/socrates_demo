@@ -52,9 +52,13 @@ export function AppNav({ displayName }: { displayName?: string | null }) {
         </nav>
 
         <div className="order-2 ml-auto flex items-center gap-2.5 sm:order-3">
-          <LinkButton href="/talk" variant="gold" size="sm">
-            Talk now
-          </LinkButton>
+          {/* outline, not gold: gold is rationed to each surface's one focal
+              action / Socrates' star (SPEC §9). Redundant on /talk itself. */}
+          {!pathname.startsWith("/talk") && (
+            <LinkButton href="/talk" variant="outline" size="sm">
+              Talk now
+            </LinkButton>
+          )}
           <ThemeToggle />
           <button
             type="button"

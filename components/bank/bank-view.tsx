@@ -135,11 +135,6 @@ export function BankView({
     return groups;
   }, [filtered]);
 
-  const topThemes = useMemo(
-    () => [...themes].sort((a, b) => b.entryCount - a.entryCount).slice(0, 10),
-    [themes],
-  );
-
   if (entries.length === 0) {
     return (
       <div className="border-t border-hairline py-16">
@@ -173,12 +168,8 @@ export function BankView({
             label="list"
           />
         </div>
-        <span className="label-mono text-marble-dim">
-          {entries.length} {entries.length === 1 ? "thought" : "thoughts"}
-          {topThemes.length
-            ? ` · ${topThemes.length} ${topThemes.length === 1 ? "thread" : "threads"}`
-            : ""}
-        </span>
+        {/* no tally — the bank is not a scoreboard (SPEC §9 anti-metric law) */}
+        <span className="label-mono text-marble-dim">your sky</span>
       </div>
 
       {mode === "sky" ? (
