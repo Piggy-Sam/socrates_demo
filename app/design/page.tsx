@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Constellation } from "@/components/sky/constellation";
+import { DotMatrix } from "@/components/decor/dot-matrix";
 import {
   BreathingStar,
   type StarState,
@@ -10,8 +10,6 @@ import { BustMark } from "@/components/brand/bust-mark";
 import { Wordmark } from "@/components/brand/wordmark";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { Button } from "@/components/ui/button";
-import { SAMPLE_SKY } from "@/lib/sample-sky";
-import type { SkyStar } from "@/lib/constellation";
 
 const SWATCHES: { name: string; var: string; note: string }[] = [
   { name: "ink", var: "--ink", note: "paper ground" },
@@ -53,7 +51,6 @@ function Section({
 
 export default function DesignLab() {
   const [starState, setStarState] = useState<StarState>("idle");
-  const [selected, setSelected] = useState<SkyStar | null>(null);
 
   return (
     <main className="mx-auto max-w-5xl px-6 pb-24 sm:px-8">
@@ -166,23 +163,17 @@ export default function DesignLab() {
         </div>
       </Section>
 
-      {/* THE CONSTELLATION */}
-      <Section label="04 · Signature" title="The dot-matrix field">
+      {/* THE LIVING DOT-MATRIX */}
+      <Section label="04 · Signature" title="The living dot-matrix">
         <p className="mb-5 max-w-xl text-marble-dim">
-          Each thought is a plotted dot; recurring themes draw hairline rules
-          between them; the field grows over time. Hover a dot to read it.
+          The one decorative language. A faint field of dots breathes in slow
+          overlapping waves and comes alive around the pointer — dots brighten,
+          swell, and are gently repelled, like a lens passing over the field.
+          Move your cursor across it.
         </p>
-        <Constellation
-          stars={SAMPLE_SKY}
-          selectedId={selected?.id ?? null}
-          onSelect={(s) => setSelected(s)}
-        />
-        {selected && (
-          <div className="mt-4 rounded-md border border-hairline bg-raised p-4">
-            <p className="label-mono text-accent">{selected.type}</p>
-            <p className="mt-1 text-marble">{selected.content}</p>
-          </div>
-        )}
+        <div className="relative h-80 overflow-hidden rounded-md border border-hairline bg-ink">
+          <DotMatrix />
+        </div>
       </Section>
 
       {/* THE MARK + CONTROLS */}

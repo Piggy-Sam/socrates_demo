@@ -40,7 +40,7 @@ export function BlinkCursor({ className = "" }: { className?: string }) {
 
 type Props = {
   className?: string;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
   href?: string | null;
   /** show the bust mark (kept name for back-compat with existing callers) */
   withStar?: boolean;
@@ -50,11 +50,16 @@ const TEXT = {
   sm: "text-sm",
   md: "text-lg",
   lg: "text-2xl sm:text-3xl",
+  xl: "text-4xl sm:text-6xl",
 } as const;
 
-const MARK = { sm: 18, md: 24, lg: 40 } as const;
+const MARK = { sm: 18, md: 24, lg: 40, xl: 64 } as const;
+const GAP = { sm: "gap-2.5", md: "gap-2.5", lg: "gap-3", xl: "gap-4" } as const;
 
-/** Socrates AI wordmark — dot-matrix bust + SOCRATES in Plex Mono caps + cursor. */
+/**
+ * Socrates AI wordmark — dot-matrix face + "SOCRATES" in Plex Mono caps, with
+ * "AI" and the blinking cursor in the blue accent.
+ */
 export function Wordmark({
   className = "",
   size = "md",
@@ -62,14 +67,14 @@ export function Wordmark({
   withStar = true,
 }: Props) {
   const inner = (
-    <span className={`inline-flex items-center gap-2.5 ${className}`}>
+    <span className={`inline-flex items-center ${GAP[size]} ${className}`}>
       {withStar && (
         <BustMark size={MARK[size]} className="shrink-0 text-marble" />
       )}
       <span
-        className={`inline-flex items-center font-mono-display font-medium uppercase tracking-[0.2em] text-marble ${TEXT[size]}`}
+        className={`inline-flex items-center font-mono-display font-medium uppercase tracking-[0.18em] text-marble ${TEXT[size]}`}
       >
-        Socrates
+        Socrates<span className="ml-[0.4em] text-accent">AI</span>
         <BlinkCursor />
       </span>
     </span>

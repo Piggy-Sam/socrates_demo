@@ -5,11 +5,10 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { motion, useReducedMotion } from "motion/react";
 import { ArrowLeft, Check } from "lucide-react";
-import { Constellation } from "@/components/sky/constellation";
+import { DotMatrix } from "@/components/decor/dot-matrix";
 import { Wordmark } from "@/components/brand/wordmark";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
-import { SAMPLE_SKY } from "@/lib/sample-sky";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -54,15 +53,9 @@ function LoginInner() {
 
   return (
     <main className="relative flex min-h-dvh flex-col items-center justify-center px-6 py-16">
-      {/* faint dot-field — graph paper for the instrument, behind everything */}
-      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        <Constellation
-          stars={SAMPLE_SKY}
-          interactive={false}
-          framed={false}
-          igniteDuration={2.6}
-          className="opacity-25"
-        />
+      {/* the living dot-matrix, behind everything */}
+      <div className="fixed inset-0 -z-10">
+        <DotMatrix />
       </div>
 
       <motion.div
