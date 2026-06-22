@@ -231,7 +231,13 @@ export async function POST(req: Request) {
         transcript: rawTurns,
         elevenlabsConversationId: conversationId,
       })
+      // atomic dedupe backstop for the SELECT above — the unique index on
+      // elevenlabs_conversation_id makes concurrent retries a no-op.
+      .onConflictDoNothing({ target: sessions.elevenlabsConversationId })
       .returning({ id: sessions.id });
+    if (!inserted[0]) {
+      return NextResponse.json({ ok: true, alreadyProcessed: true });
+    }
     sessionId = inserted[0].id;
 
     if (turns.length > 0) {

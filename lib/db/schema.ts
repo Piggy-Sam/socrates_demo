@@ -10,6 +10,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
   vector,
 } from "drizzle-orm/pg-core";
@@ -69,8 +70,9 @@ export const sessions = pgTable(
   },
   (t) => [
     index("sessions_user_started_idx").on(t.userId, t.startedAt),
-    // idempotency for the post-call webhook (dedupe on conversation_id)
-    index("sessions_conversation_idx").on(t.elevenlabsConversationId),
+    // atomic idempotency for the post-call webhook: UNIQUE on conversation_id.
+    // Postgres treats NULLs as distinct, so chat/other null-id sessions are fine.
+    uniqueIndex("sessions_conversation_idx").on(t.elevenlabsConversationId),
   ],
 );
 
@@ -130,7 +132,11 @@ export const themes = pgTable(
     firstSeen: timestamp("first_seen", { withTimezone: true }).defaultNow(),
     lastSeen: timestamp("last_seen", { withTimezone: true }).defaultNow(),
   },
-  (t) => [index("themes_user_idx").on(t.userId)],
+  (t) => [
+    index("themes_user_idx").on(t.userId),
+    // atomic per-user theme upsert (one row per label); see extraction pipeline
+    uniqueIndex("themes_user_label_uq").on(t.userId, t.label),
+  ],
 );
 
 // ── summaries (daily distillations + weekly recaps) ──────────────────────────────

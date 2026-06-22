@@ -9,7 +9,7 @@
 // SURFACE the person's thoughts in their own words, never interpret, never
 // flatter, never grade. The summary is a quiet mirror, not a report card.
 
-import { and, eq, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { entries, summaries, themes } from "@/lib/db/schema";
 import type { EntryType } from "@/lib/constellation";
@@ -245,27 +245,18 @@ export async function extractAndStore(
     }
     for (const [label, count] of counts) {
       try {
-        const existing = await db
-          .select({ id: themes.id, entryCount: themes.entryCount })
-          .from(themes)
-          .where(and(eq(themes.userId, userId), eq(themes.label, label)))
-          .limit(1);
-
-        if (existing[0]) {
-          await db
-            .update(themes)
-            .set({
-              entryCount: (existing[0].entryCount ?? 0) + count,
+        // atomic upsert — relies on the unique index on (user_id, label); safe
+        // under concurrent webhook retries, and one round-trip instead of two.
+        await db
+          .insert(themes)
+          .values({ userId, label, entryCount: count })
+          .onConflictDoUpdate({
+            target: [themes.userId, themes.label],
+            set: {
+              entryCount: sql`${themes.entryCount} + ${count}`,
               lastSeen: sql`now()`,
-            })
-            .where(eq(themes.id, existing[0].id));
-        } else {
-          await db.insert(themes).values({
-            userId,
-            label,
-            entryCount: count,
+            },
           });
-        }
         result.themesTouched += 1;
       } catch (err) {
         console.error(`[pipeline] theme upsert failed for "${label}"`, err);
