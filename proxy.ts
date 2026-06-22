@@ -1,7 +1,12 @@
 import { type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
-export async function middleware(request: NextRequest) {
+// Next 16 "proxy" convention (formerly middleware). Proxy ALWAYS runs on the
+// Node.js runtime — which is exactly what we need: the Supabase SSR client pulls
+// in @supabase/supabase-js -> realtime-js -> `ws`, a Node-only module the Edge
+// bundler rejected ("Edge Function referencing unsupported modules"). No runtime
+// config is allowed here (Next errors on it) since Node is implied.
+export async function proxy(request: NextRequest) {
   return updateSession(request);
 }
 
