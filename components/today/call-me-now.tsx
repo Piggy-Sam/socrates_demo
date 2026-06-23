@@ -41,12 +41,21 @@ export function CallMeNow({
         setMessage("Calling isn't wired up yet. Talk now in the browser instead.");
         return;
       }
+
+      const body = (await res.json().catch(() => null)) as
+        | { ok?: boolean; error?: string }
+        | null;
+
       if (!res.ok) {
         setStatus("error");
+        // Surface the specific reason the server (or ElevenLabs/Twilio) gave —
+        // e.g. a trial-account "number is unverified" message — so the cause is
+        // legible; fall back to calm generic copy only when there's nothing.
         setMessage(
-          phone
-            ? "Couldn't place the call just now. Try again in a moment."
-            : "Add a phone number in your profile first, then I can call.",
+          body?.error ||
+            (phone
+              ? "Couldn't place the call just now. Try again in a moment."
+              : "Add a phone number in your profile first, then I can call."),
         );
         return;
       }
