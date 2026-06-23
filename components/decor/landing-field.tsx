@@ -174,6 +174,11 @@ export function LandingField({ faceId, className = "", spacing = 22 }: Props) {
       ptr.active = true;
     };
     const onLeave = () => { ptr.active = false; };
+    // touch is transient: deactivate when the finger lifts (pointerleave
+    // doesn't fire for touch). Mouse keeps hovering (handled by pointerleave).
+    const onUp = (e: PointerEvent) => {
+      if (e.pointerType !== "mouse") ptr.active = false;
+    };
 
     readColors();
     resize();
@@ -182,6 +187,9 @@ export function LandingField({ faceId, className = "", spacing = 22 }: Props) {
     const mo = new MutationObserver(readColors);
     mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
     window.addEventListener("pointermove", onMove, { passive: true });
+    window.addEventListener("pointerdown", onMove, { passive: true });
+    window.addEventListener("pointerup", onUp, { passive: true });
+    window.addEventListener("pointercancel", onUp, { passive: true });
     window.addEventListener("pointerleave", onLeave);
     raf = requestAnimationFrame(draw);
 
@@ -189,6 +197,9 @@ export function LandingField({ faceId, className = "", spacing = 22 }: Props) {
       cancelAnimationFrame(raf);
       ro.disconnect(); mo.disconnect();
       window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerdown", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
       window.removeEventListener("pointerleave", onLeave);
     };
   }, [faceId, spacing]);

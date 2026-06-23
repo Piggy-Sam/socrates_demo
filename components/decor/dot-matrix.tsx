@@ -92,6 +92,10 @@ export function DotMatrix({ className = "", spacing = 30, intensity = 1 }: Props
       ptr.active = true;
     };
     const onLeave = () => { ptr.active = false; };
+    // touch is transient — deactivate on finger-lift (mouse keeps hovering)
+    const onUp = (e: PointerEvent) => {
+      if (e.pointerType !== "mouse") ptr.active = false;
+    };
 
     readColors();
     resize();
@@ -103,6 +107,9 @@ export function DotMatrix({ className = "", spacing = 30, intensity = 1 }: Props
       draw(0);
     } else {
       window.addEventListener("pointermove", onMove, { passive: true });
+      window.addEventListener("pointerdown", onMove, { passive: true });
+      window.addEventListener("pointerup", onUp, { passive: true });
+      window.addEventListener("pointercancel", onUp, { passive: true });
       window.addEventListener("pointerleave", onLeave);
       raf = requestAnimationFrame(draw);
     }
@@ -110,6 +117,9 @@ export function DotMatrix({ className = "", spacing = 30, intensity = 1 }: Props
       cancelAnimationFrame(raf);
       ro.disconnect(); mo.disconnect();
       window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerdown", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
       window.removeEventListener("pointerleave", onLeave);
     };
   }, [spacing, intensity]);
