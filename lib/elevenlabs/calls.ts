@@ -2,17 +2,57 @@
 // ElevenLabs). The agent places a real phone call; the Custom-LLM brain
 // (/api/llm/chat/completions) and the post-call webhook do the rest.
 //
-// IMPORTANT ENV FLAG — see blockers:
-//   `agent_phone_number_id` MUST be the ElevenLabs phone-number id ("phnum_...")
-//   from the ElevenLabs dashboard, NOT a raw E.164 number. The env var
-//   ELEVENLABS_PHONE_NUMBER_ID currently appears to hold a raw number ("+1984...").
-//   If outbound calls fail, that env value is the first thing to fix.
-//   Also: Twilio TRIAL only dials *verified* numbers and plays a short Twilio
+// ENV NOTE:
+//   ELEVENLABS_PHONE_NUMBER_ID should be the ElevenLabs phone-number id
+//   ("phnum_..."), NOT a raw E.164 number. If it's missing or a raw number,
+//   startOutboundCall() self-heals by resolving the account's outbound number id
+//   at call time (configuredPhoneNumberId / lookupOutboundPhoneNumberId), and
+//   also retries once if a configured id 404s.
+//   Note: Twilio TRIAL only dials *verified* numbers and plays a short Twilio
 //   greeting before Socrates speaks — fine for demoing to your own verified phone.
 
 import { env } from "@/lib/env";
 
 const ELEVENLABS_BASE = "https://api.elevenlabs.io";
+
+const PHNUM_RE = /^phnum_/;
+
+/**
+ * The configured phone-number id — but ONLY if it looks like a real ElevenLabs
+ * id (`phnum_…`). A raw E.164 number (a common misconfiguration) or an empty
+ * value is treated as "unset" so we fall back to resolving the id from the
+ * account, instead of sending Twilio garbage and 404ing.
+ */
+function configuredPhoneNumberId(): string | null {
+  try {
+    const v = env.elevenLabsPhoneNumberId()?.trim();
+    return v && PHNUM_RE.test(v) ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+/** First outbound-capable phone-number id registered on the ElevenLabs account. */
+async function lookupOutboundPhoneNumberId(): Promise<string | null> {
+  try {
+    const res = await fetch(`${ELEVENLABS_BASE}/v1/convai/phone-numbers`, {
+      headers: { "xi-api-key": env.elevenLabsKey() },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) return null;
+    const list = (await res.json()) as Array<{
+      phone_number_id?: string;
+      supports_outbound?: boolean;
+    }>;
+    if (!Array.isArray(list)) return null;
+    const pick =
+      list.find((p) => p.supports_outbound && p.phone_number_id) ??
+      list.find((p) => p.phone_number_id);
+    return pick?.phone_number_id ?? null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Dynamic variables handed to the agent at call start. They become
@@ -54,31 +94,57 @@ export async function startOutboundCall({
   const number = toNumber?.trim();
   if (!number) throw new Error("startOutboundCall: missing destination number");
 
-  const body = {
-    agent_id: env.elevenLabsAgentId(),
-    // NOTE: must be the ElevenLabs "phnum_..." id, not a raw phone number.
-    agent_phone_number_id: env.elevenLabsPhoneNumberId(),
-    to_number: number,
-    conversation_initiation_client_data: {
-      // top-level user_id is convenient; we also mirror it into dynamic_variables
-      // so it is available to the prompt and to the brain route's RAG scoping.
-      user_id: dynamicVariables.user_id,
-      dynamic_variables: dynamicVariables,
-    },
-  };
+  // Resolve the phone-number id: prefer a correctly-formatted configured value;
+  // otherwise (missing, or a raw E.164 number set by mistake) look it up from
+  // the account so the call still goes through.
+  let phoneNumberId = configuredPhoneNumberId();
+  let usedLookup = false;
+  if (!phoneNumberId) {
+    phoneNumberId = await lookupOutboundPhoneNumberId();
+    usedLookup = true;
+  }
+  if (!phoneNumberId) {
+    throw new Error(
+      "No ElevenLabs phone number available — set ELEVENLABS_PHONE_NUMBER_ID to a phnum_… id, or register an outbound number in ElevenLabs.",
+    );
+  }
 
-  let res: Response;
-  try {
-    res = await fetch(`${ELEVENLABS_BASE}/v1/convai/twilio/outbound-call`, {
+  const send = (phnumId: string): Promise<Response> =>
+    fetch(`${ELEVENLABS_BASE}/v1/convai/twilio/outbound-call`, {
       method: "POST",
       headers: {
         "xi-api-key": env.elevenLabsKey(),
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        agent_id: env.elevenLabsAgentId(),
+        agent_phone_number_id: phnumId,
+        to_number: number,
+        conversation_initiation_client_data: {
+          // top-level user_id is convenient; we also mirror it into
+          // dynamic_variables for the prompt and the brain route's RAG scoping.
+          user_id: dynamicVariables.user_id,
+          dynamic_variables: dynamicVariables,
+        },
+      }),
       // outbound-call is a quick control-plane request; don't hang the function
       signal: AbortSignal.timeout(15_000),
     });
+
+  let res: Response;
+  try {
+    res = await send(phoneNumberId);
+    // Self-heal a stale/unknown configured id: if it 404s, resolve the real one
+    // from the account and retry once.
+    if (res.status === 404 && !usedLookup) {
+      const looked = await lookupOutboundPhoneNumberId();
+      if (looked && looked !== phoneNumberId) {
+        console.warn(
+          `[elevenlabs] phone_number_id ${phoneNumberId} not found; retrying with ${looked}`,
+        );
+        res = await send(looked);
+      }
+    }
   } catch (err) {
     throw new Error(
       `ElevenLabs outbound-call request failed: ${

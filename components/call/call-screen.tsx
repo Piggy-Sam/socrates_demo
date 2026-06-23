@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ConversationProvider } from "@elevenlabs/react";
 import { Mic, MicOff, PhoneOff } from "lucide-react";
@@ -48,16 +48,24 @@ function CallSurface({ displayName }: Props) {
     toggleMute,
   } = useSocratesCall();
 
-  // Clean teardown: if the user navigates away mid-call, hang up.
+  // Clean teardown: if the user navigates AWAY mid-call (component unmount),
+  // hang up. We read phase + end through refs and use an EMPTY dependency array
+  // so this fires ONLY on unmount. Depending on [phase] was a bug: React runs an
+  // effect's cleanup on every dependency change, so the connecting->live
+  // transition ran the previous cleanup (whose closure still saw phase
+  // "connecting") and called end() — tearing the call down the instant it
+  // connected (≈2s, no audio).
+  const phaseRef = useRef(phase);
+  phaseRef.current = phase;
+  const endRef = useRef(end);
+  endRef.current = end;
   useEffect(() => {
     return () => {
-      if (phase === "live" || phase === "connecting") {
-        void end();
+      if (phaseRef.current === "live" || phaseRef.current === "connecting") {
+        void endRef.current();
       }
     };
-    // We intentionally only react to phase transitions into an active call.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase]);
+  }, []);
 
   const isActive = phase === "live" || phase === "connecting";
   const firstName = displayName.trim().split(/\s+/)[0] || "friend";
