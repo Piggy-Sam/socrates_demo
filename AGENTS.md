@@ -29,7 +29,7 @@ This is the live design system (shipped to prod from `main` → socrates-demo-ch
 - **Ambient background** `components/decor/dot-matrix.tsx` (`DotMatrix`): faint field on `/login` and the authenticated app shell.
 - **Orb (Socrates' presence in voice)** `components/sky/breathing-star.tsx` (`BreathingStar`, canvas; states `idle|listening|speaking|thinking|ended`, each visibly distinct/dynamic).
 - **Bank "field"** `components/sky/constellation.tsx`: entries as dots, NO connecting lines.
-- **Live reference:** the `/design` route documents the whole system.
+- **Live reference:** the `/about` route documents the whole system (the design-system reference plus Socrates' values/principles/DNA/vision; formerly `/design`).
 
 **Messaging:** lead with the big idea — *an instrument for the examined life that sharpens your OWN thinking* (AI aiding human cognition; a midwife for wisdom). Voice/chat are entry points, not the headline. Anti-metric ethos (no streaks/counts/gamification) is law.
 

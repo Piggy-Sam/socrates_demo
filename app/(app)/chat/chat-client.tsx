@@ -12,7 +12,7 @@ import { ArrowUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { StarMark } from "@/components/brand/wordmark";
-import { createChatSession, persistTurn } from "./actions";
+import { createChatSession, extractChatSession, persistTurn } from "./actions";
 
 type Turn = {
   id: string;
@@ -166,24 +166,31 @@ export function ChatClient({
       setStreaming(false);
     }
 
-    // Persist the completed exchange (best-effort; never block the UI).
-    if (assistantText.trim()) {
-      try {
-        const isNewConversation = !sessionIdRef.current;
-        const sessionId = await ensureSession();
-        await persistTurn(sessionId, text, assistantText);
-        if (isNewConversation) {
-          // Promote this brand-new thread to its own resumable URL and surface it
-          // in the sidebar. router.replace() moves the app to /chat/<id> (so the
-          // router, the address bar, and "New chat" all agree); router.refresh()
-          // re-fetches the layout's conversation list. The [id] page re-mounts
-          // ChatClient with the just-saved turns from the DB, so nothing is lost.
-          router.replace(`/chat/${sessionId}`);
-          router.refresh();
-        }
-      } catch (err) {
-        console.error("[chat] persist failed", err);
+    // Persist the completed exchange (best-effort; never block the UI). We saved
+    // a user `text` above, so persist it regardless of whether Socrates replied;
+    // persistTurn() drops empty content, so a blank assistantText safely stores
+    // just the user message instead of losing it on refresh.
+    try {
+      const isNewConversation = !sessionIdRef.current;
+      const sessionId = await ensureSession();
+      await persistTurn(sessionId, text, assistantText);
+      // Feed this written conversation into the bank via the SAME pipeline voice
+      // uses (entries + themes + daily summary). Fire-and-forget — never block or
+      // break the chat UI; extractChatSession is idempotent across re-runs.
+      void extractChatSession(sessionId).catch((err) => {
+        console.error("[chat] bank extraction failed", err);
+      });
+      if (isNewConversation) {
+        // Promote this brand-new thread to its own resumable URL and surface it
+        // in the sidebar. router.replace() moves the app to /chat/<id> (so the
+        // router, the address bar, and "New chat" all agree); router.refresh()
+        // re-fetches the layout's conversation list. The [id] page re-mounts
+        // ChatClient with the just-saved turns from the DB, so nothing is lost.
+        router.replace(`/chat/${sessionId}`);
+        router.refresh();
       }
+    } catch (err) {
+      console.error("[chat] persist failed", err);
     }
   }, [draft, streaming, ensureSession, router]);
 
@@ -251,7 +258,7 @@ export function ChatClient({
               rows={1}
               placeholder="What&rsquo;s on your mind?"
               aria-label="Your message to Socrates"
-              className="max-h-[200px] min-h-[2.75rem] flex-1 resize-none bg-transparent py-3 pr-1 font-sans text-base text-marble placeholder:text-marble-dim outline-none"
+              className="max-h-[200px] min-h-[2.75rem] flex-1 resize-none rounded-sm bg-transparent py-3 pr-1 font-sans text-base text-marble placeholder:text-marble-dim outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
             />
           </div>
           <Button
@@ -361,9 +368,12 @@ function EmptyState({
         {first ? `${first}, what's on your mind?` : "What's on your mind?"}
       </p>
       <p className="text-pretty mt-3 max-w-prose font-sans text-base text-marble-dim">
-        Start anywhere &mdash; a half-formed thought is enough. He&rsquo;ll
+        Start anywhere &mdash; a half-formed thought is enough. Socrates will
         engage it, press where it&rsquo;s soft, and surface what sharpens it
         &mdash; the thinking stays yours.
+      </p>
+      <p className="label-mono mt-4 text-marble-dim">
+        What you write joins your bank, same as what you speak.
       </p>
     </motion.div>
   );

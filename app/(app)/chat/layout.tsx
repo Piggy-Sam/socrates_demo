@@ -2,6 +2,8 @@ import { requireProfile } from "@/lib/auth";
 import { getChatSessionList } from "./queries";
 import { ChatSidebar } from "./chat-sidebar";
 
+export const dynamic = "force-dynamic";
+
 // The chat segment's own shell: a conversation-history sidebar alongside the
 // active thread. Shared by /chat (new) and /chat/[id] (resume). The list is
 // re-fetched whenever the route re-renders (incl. router.refresh() after a new

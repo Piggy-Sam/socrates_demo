@@ -16,10 +16,18 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const TOKEN_ENDPOINT = "https://api.elevenlabs.io/v1/convai/conversation/token";
+const SIGNED_URL_ENDPOINT =
+  "https://api.elevenlabs.io/v1/convai/conversation/get-signed-url";
 
 export type VoiceTokenResponse = {
   token: string;
   agentId: string;
+  /**
+   * A WebSocket signed URL for the same agent. Best-effort: the client prefers
+   * the WebRTC transport (lower latency) but falls back to WebSocket with this
+   * URL when WebRTC can't be established (firewalls/older browsers block it).
+   */
+  signedUrl?: string;
   dynamicVariables: {
     user_id: string;
     display_name: string;
@@ -86,6 +94,26 @@ export async function POST() {
     );
   }
 
+  // Best-effort: also mint a WebSocket signed URL for the same agent so the
+  // client can fall back to the WebSocket transport when WebRTC (LiveKit) can't
+  // connect (some networks/browsers block WebRTC). Never fail the call on this.
+  let signedUrl: string | undefined;
+  try {
+    const sres = await fetch(
+      `${SIGNED_URL_ENDPOINT}?agent_id=${encodeURIComponent(agentId)}`,
+      { method: "GET", headers: { "xi-api-key": apiKey }, cache: "no-store" },
+    );
+    if (sres.ok) {
+      const sdata: unknown = await sres.json();
+      const candidate = (sdata as { signed_url?: unknown })?.signed_url;
+      if (typeof candidate === "string") signedUrl = candidate;
+    } else {
+      console.warn(`[voice/token] signed-url mint failed: ${sres.status}`);
+    }
+  } catch (err) {
+    console.warn("[voice/token] signed-url mint threw", err);
+  }
+
   // Best-effort continuity hook: a one-line nudge from the user's most recent
   // thought so the agent can open on a live thread, not "how was your day".
   // Never block the call on this.
@@ -100,7 +128,7 @@ export async function POST() {
   };
 
   return NextResponse.json(
-    { token, agentId, dynamicVariables } satisfies VoiceTokenResponse,
+    { token, agentId, signedUrl, dynamicVariables } satisfies VoiceTokenResponse,
     { headers: { "Cache-Control": "no-store" } },
   );
 }

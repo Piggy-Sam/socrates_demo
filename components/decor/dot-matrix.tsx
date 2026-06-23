@@ -97,6 +97,18 @@ export function DotMatrix({ className = "", spacing = 30, intensity = 1 }: Props
       if (e.pointerType !== "mouse") ptr.active = false;
     };
 
+    // pause the RAF loop while the tab is hidden (saves CPU/battery); resume
+    // seamlessly when visible. Reduced-motion stays static throughout.
+    const onVisibility = () => {
+      if (reduce) return;
+      if (document.hidden) {
+        cancelAnimationFrame(raf);
+        raf = 0;
+      } else if (!raf) {
+        raf = requestAnimationFrame(draw);
+      }
+    };
+
     readColors();
     resize();
     const ro = new ResizeObserver(resize);
@@ -111,7 +123,8 @@ export function DotMatrix({ className = "", spacing = 30, intensity = 1 }: Props
       window.addEventListener("pointerup", onUp, { passive: true });
       window.addEventListener("pointercancel", onUp, { passive: true });
       window.addEventListener("pointerleave", onLeave);
-      raf = requestAnimationFrame(draw);
+      document.addEventListener("visibilitychange", onVisibility);
+      if (!document.hidden) raf = requestAnimationFrame(draw);
     }
     return () => {
       cancelAnimationFrame(raf);
@@ -121,6 +134,7 @@ export function DotMatrix({ className = "", spacing = 30, intensity = 1 }: Props
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onUp);
       window.removeEventListener("pointerleave", onLeave);
+      document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [spacing, intensity]);
 

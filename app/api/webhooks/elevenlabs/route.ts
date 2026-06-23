@@ -101,15 +101,16 @@ function asString(v: unknown): string | undefined {
   return typeof v === "string" && v.trim() ? v.trim() : undefined;
 }
 
-/** Pull the user id from the event: top-level, then dynamic variables. */
+/**
+ * Pull the user id from the event — ONLY from server-set locations: the
+ * top-level `data.user_id` and `dynamic_variables.user_id` (which we set when
+ * placing the call / starting the session). We deliberately do NOT fall back to
+ * looser, client-controllable aliases so a spoofed payload can't bind a
+ * transcript to another user.
+ */
 function resolveUserId(data: ElevenLabsData): string | undefined {
   const dyn = data.conversation_initiation_client_data?.dynamic_variables ?? {};
-  return (
-    asString(data.user_id) ??
-    asString(dyn.user_id) ??
-    asString(dyn.userId) ??
-    asString(dyn.user)
-  );
+  return asString(data.user_id) ?? asString(dyn.user_id);
 }
 
 /** Map ElevenLabs roles to our message roles ("agent" -> "socrates"). */

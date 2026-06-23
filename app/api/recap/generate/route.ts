@@ -62,7 +62,7 @@ export async function POST() {
       {
         ok: false,
         error:
-          "There's nothing from this week yet. Talk to me first, then I'll have something to reflect back.",
+          "There's nothing from this week yet. Talk something through first, then there's something to reflect on.",
       },
       { status: 400 },
     );
@@ -92,14 +92,14 @@ export async function POST() {
   } catch (err) {
     console.error("[recap/generate] OpenAI failed", err);
     return NextResponse.json(
-      { ok: false, error: "I couldn't gather the week just now. Try again." },
+      { ok: false, error: "Couldn't gather the week just now. Try again." },
       { status: 502 },
     );
   }
 
   if (!content) {
     return NextResponse.json(
-      { ok: false, error: "I couldn't gather the week just now. Try again." },
+      { ok: false, error: "Couldn't gather the week just now. Try again." },
       { status: 502 },
     );
   }

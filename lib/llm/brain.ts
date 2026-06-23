@@ -69,7 +69,14 @@ function record(v: unknown): Record<string, unknown> | undefined {
 export function sanitizeMessages(messages: ChatMessage[]): ChatMessage[] {
   if (!Array.isArray(messages)) return [];
   return messages
-    .filter((m) => m && m.role !== "system" && m.role !== "developer")
+    .filter(
+      (m) =>
+        m &&
+        m.role !== "system" &&
+        m.role !== "developer" &&
+        typeof m.content === "string" &&
+        m.content.trim() !== "",
+    )
     .map((m) => ({
       // OpenAI's chat API expects "assistant"; ElevenLabs/our UI may send that.
       role: m.role,

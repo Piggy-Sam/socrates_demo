@@ -215,7 +215,7 @@ RAG: at conversation time, embed the recent context, vector-search `entries` for
 
 ## 9. Design system — "The Instrument" (CURRENT, shipped)
 
-> This section reflects the **implemented and live** design language. It replaces the original "Aegean Night / antique-gold / Fraunces-Spectral / constellation" concept, which was explored and then **retired**. The authoritative, always-loaded summary lives in `AGENTS.md` (loaded via `CLAUDE.md` each session) and the live reference is the `/design` route. §2 (the Socratic identity) is unchanged and unchangeable.
+> This section reflects the **implemented and live** design language. It replaces the original "Aegean Night / antique-gold / Fraunces-Spectral / constellation" concept, which was explored and then **retired**. The authoritative, always-loaded summary lives in `AGENTS.md` (loaded via `CLAUDE.md` each session) and the live reference is the `/about` route. §2 (the Socratic identity) is unchanged and unchangeable.
 
 ### The concept
 

@@ -114,8 +114,10 @@ function Dot({
             "aria-label": `${star.type}: ${star.content.slice(0, 80)}`,
           }
         : { "aria-hidden": true })}
-      className={`group absolute block -translate-x-1/2 -translate-y-1/2 rounded-full ${
-        interactive ? "cursor-pointer" : "pointer-events-none"
+      className={`group absolute block -translate-x-1/2 -translate-y-1/2 rounded-full outline-none ${
+        interactive
+          ? "cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
+          : "pointer-events-none"
       }`}
       style={{ left: `${star.x}%`, top: `${star.y}%` }}
       initial={reduce ? false : { opacity: 0, scale: 0 }}
@@ -142,7 +144,7 @@ function Dot({
       {interactive && (
         <span
           role="tooltip"
-          className={`pointer-events-none absolute z-20 w-52 max-w-[60vw] rounded-md border border-hairline-strong bg-raised p-3 opacity-0 shadow-xl transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100 ${
+          className={`ring-accent pointer-events-none absolute z-20 w-52 max-w-[60vw] rounded-md border border-hairline-strong bg-raised p-3 opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100 ${
             tooltipFlipX ? "right-3" : "left-3"
           } ${tooltipFlipY ? "top-3" : "bottom-3"}`}
         >

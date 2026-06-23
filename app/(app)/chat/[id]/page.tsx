@@ -3,6 +3,8 @@ import { requireProfile } from "@/lib/auth";
 import { loadChatSession } from "../queries";
 import { ChatClient } from "../chat-client";
 
+export const dynamic = "force-dynamic";
+
 // Resume a saved conversation. Loads its turns (ownership-checked) and hands them
 // to the same ChatClient as initial state, so the thread continues seamlessly.
 export default async function ResumeChatPage({

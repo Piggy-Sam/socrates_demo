@@ -24,7 +24,7 @@ with Socrates' presence as a single warm-gold breathing star.
 
 - Tokens & theming: `app/globals.css` (dark "Aegean Night" + light "Marble" + system)
 - Signature primitives: `components/sky/constellation.tsx`, `components/sky/breathing-star.tsx`
-- Live design lab: visit `/design`
+- Live design lab + about: visit `/about`
 
 ## Develop
 

@@ -98,26 +98,64 @@ export function useSocratesCall(): SocratesCall {
       return;
     }
 
-    // 2) Open the WebRTC session. startSession requests mic permission; a
-    //    rejection (or any failure) surfaces here.
+    // 2) Open the session. startSession requests mic permission. Prefer WebRTC
+    //    (lowest latency); if that transport can't be established — some
+    //    networks/firewalls/older browsers block WebRTC, which connects but
+    //    never carries audio — fall back to the WebSocket transport so the call
+    //    still works. A mic-permission denial is terminal in either case.
     try {
       await startSession({
         conversationToken: payload.token,
         connectionType: "webrtc",
         dynamicVariables: payload.dynamicVariables,
       });
+      return; // onConnect promotes us to "live".
+    } catch (errWebrtc) {
+      if (isMicPermissionError(errWebrtc)) {
+        startingRef.current = false;
+        setError(
+          "Socrates needs your microphone. Allow access, then try again.",
+        );
+        setPhase("error");
+        return;
+      }
+      console.warn(
+        "[socrates-call] WebRTC connect failed; falling back to WebSocket",
+        errWebrtc,
+      );
+      // Tear down any half-open WebRTC session before retrying.
+      try {
+        endSession();
+      } catch {
+        // nothing to tear down
+      }
+    }
+
+    if (!payload.signedUrl) {
+      startingRef.current = false;
+      setError("Couldn't start the session. Try again in a moment.");
+      setPhase("error");
+      return;
+    }
+
+    try {
+      await startSession({
+        signedUrl: payload.signedUrl,
+        connectionType: "websocket",
+        dynamicVariables: payload.dynamicVariables,
+      });
       // onConnect promotes us to "live".
-    } catch (err) {
-      console.error("[socrates-call] startSession failed", err);
+    } catch (errWs) {
+      console.error("[socrates-call] WebSocket fallback failed", errWs);
       startingRef.current = false;
       setError(
-        isMicPermissionError(err)
+        isMicPermissionError(errWs)
           ? "Socrates needs your microphone. Allow access, then try again."
           : "Couldn't start the session. Try again in a moment.",
       );
       setPhase("error");
     }
-  }, [phase, startSession]);
+  }, [phase, startSession, endSession]);
 
   const end = useCallback(async () => {
     startingRef.current = false;

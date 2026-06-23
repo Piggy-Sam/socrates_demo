@@ -6,6 +6,7 @@
 // file. (Per-timezone precision against daily_call_time is a Pro / external-
 // scheduler concern; the "Call me now" button is the primary demo path.)
 
+import { timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
 import { desc, eq, isNotNull } from "drizzle-orm";
 import { db } from "@/lib/db/client";
@@ -35,13 +36,12 @@ async function recentThread(userId: string): Promise<string> {
 function authorized(req: Request): boolean {
   const header = req.headers.get("authorization") ?? "";
   const expected = `Bearer ${env.cronSecret()}`;
-  // constant-ish comparison; lengths usually differ only on a real mismatch
-  if (header.length !== expected.length) return false;
-  let diff = 0;
-  for (let i = 0; i < header.length; i++) {
-    diff |= header.charCodeAt(i) ^ expected.charCodeAt(i);
-  }
-  return diff === 0;
+  // Constant-time compare — bail on length mismatch first (timingSafeEqual
+  // throws on unequal-length buffers, and that itself would leak length).
+  const a = Buffer.from(header);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
 }
 
 export async function GET(req: Request) {

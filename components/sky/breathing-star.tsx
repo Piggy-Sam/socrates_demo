@@ -143,6 +143,18 @@ export function BreathingStar({
       raf = requestAnimationFrame(loop);
     };
 
+    // pause the RAF loop while the tab is hidden (saves CPU/battery); resume
+    // seamlessly when visible. Reduced-motion stays static throughout.
+    const onVisibility = () => {
+      if (reduce) return;
+      if (document.hidden) {
+        cancelAnimationFrame(raf);
+        raf = 0;
+      } else if (!raf) {
+        raf = requestAnimationFrame(loop);
+      }
+    };
+
     readColors();
     setup();
     const mo = new MutationObserver(readColors);
@@ -151,12 +163,17 @@ export function BreathingStar({
       attributeFilter: ["data-theme"],
     });
 
-    if (reduce) frame(0);
-    else raf = requestAnimationFrame(loop);
+    if (reduce) {
+      frame(0);
+    } else {
+      document.addEventListener("visibilitychange", onVisibility);
+      if (!document.hidden) raf = requestAnimationFrame(loop);
+    }
 
     return () => {
       cancelAnimationFrame(raf);
       mo.disconnect();
+      document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [size]);
 
