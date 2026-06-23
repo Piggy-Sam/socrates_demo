@@ -1,6 +1,8 @@
 import { requireProfile } from "@/lib/auth";
 import { ChatClient } from "./chat-client";
 
+export const dynamic = "force-dynamic";
+
 // A fresh conversation. The shell (nav + guard) comes from app/(app)/layout.tsx;
 // the conversation-history sidebar from app/(app)/chat/layout.tsx. A new session
 // row is created lazily on the first message, then this thread becomes resumable
