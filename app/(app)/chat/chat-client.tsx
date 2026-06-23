@@ -166,24 +166,25 @@ export function ChatClient({
       setStreaming(false);
     }
 
-    // Persist the completed exchange (best-effort; never block the UI).
-    if (assistantText.trim()) {
-      try {
-        const isNewConversation = !sessionIdRef.current;
-        const sessionId = await ensureSession();
-        await persistTurn(sessionId, text, assistantText);
-        if (isNewConversation) {
-          // Promote this brand-new thread to its own resumable URL and surface it
-          // in the sidebar. router.replace() moves the app to /chat/<id> (so the
-          // router, the address bar, and "New chat" all agree); router.refresh()
-          // re-fetches the layout's conversation list. The [id] page re-mounts
-          // ChatClient with the just-saved turns from the DB, so nothing is lost.
-          router.replace(`/chat/${sessionId}`);
-          router.refresh();
-        }
-      } catch (err) {
-        console.error("[chat] persist failed", err);
+    // Persist the completed exchange (best-effort; never block the UI). We saved
+    // a user `text` above, so persist it regardless of whether Socrates replied;
+    // persistTurn() drops empty content, so a blank assistantText safely stores
+    // just the user message instead of losing it on refresh.
+    try {
+      const isNewConversation = !sessionIdRef.current;
+      const sessionId = await ensureSession();
+      await persistTurn(sessionId, text, assistantText);
+      if (isNewConversation) {
+        // Promote this brand-new thread to its own resumable URL and surface it
+        // in the sidebar. router.replace() moves the app to /chat/<id> (so the
+        // router, the address bar, and "New chat" all agree); router.refresh()
+        // re-fetches the layout's conversation list. The [id] page re-mounts
+        // ChatClient with the just-saved turns from the DB, so nothing is lost.
+        router.replace(`/chat/${sessionId}`);
+        router.refresh();
       }
+    } catch (err) {
+      console.error("[chat] persist failed", err);
     }
   }, [draft, streaming, ensureSession, router]);
 
