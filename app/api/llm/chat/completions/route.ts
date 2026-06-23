@@ -54,6 +54,23 @@ function openaiError(
   );
 }
 
+/** RAG continuity, but never let it stall the first token: resolve "" if the
+ * lookup exceeds `ms` (cross-region DB + an embedding call can be slow). */
+async function ragWithTimeout(
+  userId: string,
+  query: string,
+  ms: number,
+): Promise<string> {
+  try {
+    return await Promise.race([
+      getRagContext(userId, query),
+      new Promise<string>((resolve) => setTimeout(() => resolve(""), ms)),
+    ]);
+  } catch {
+    return "";
+  }
+}
+
 export async function POST(req: NextRequest): Promise<Response> {
   // ── parse body ────────────────────────────────────────────────────────────
   let body: ChatCompletionRequest;
@@ -97,16 +114,14 @@ export async function POST(req: NextRequest): Promise<Response> {
     }
   }
 
-  // The bearer path that fails to yield a user_id is a misconfigured agent; the
-  // cookie path with no user is unauthenticated. Both are 401.
-  if (!userId) {
-    return openaiError(
-      isVoiceCaller
-        ? "Missing user_id in dynamic variables."
-        : "Unauthorized.",
-      401,
-      "invalid_request_error",
-    );
+  // A trusted voice caller (valid bearer) must STILL get a response even when the
+  // agent didn't forward a user_id in the per-turn body — ElevenLabs frequently
+  // omits it, and a 401 here is surfaced to the caller as "custom_llm generation
+  // failed", so the agent goes silent and hangs up right after the greeting. In
+  // that case we just answer without personalization (no RAG) for the turn. Only
+  // the cookie path with no user is genuinely unauthenticated.
+  if (!userId && !isVoiceCaller) {
+    return openaiError("Unauthorized.", 401, "invalid_request_error");
   }
 
   const modality: "voice" | "text" = isVoiceCaller ? "voice" : "text";
@@ -115,8 +130,13 @@ export async function POST(req: NextRequest): Promise<Response> {
   // ── identity + RAG ──────────────────────────────────────────────────────────
   const history = sanitizeMessages(body.messages);
   const ragQuery = buildRagQuery(history);
-  // RAG is best-effort; getRagContext already returns "" on failure.
-  const ragContext = ragQuery ? await getRagContext(userId, ragQuery) : "";
+  // RAG is best-effort AND time-boxed so a slow (cross-region) lookup can't push
+  // the first token past the voice agent's timeout. Skipped when we don't know
+  // who the turn is for (an anonymous voice turn — see the auth note above).
+  const ragContext =
+    userId && ragQuery
+      ? await ragWithTimeout(userId, ragQuery, isVoiceCaller ? 2500 : 8000)
+      : "";
   const systemPrompt = buildSystemPrompt(modality, ragContext);
 
   const messages: ChatCompletionMessageParam[] = [
