@@ -107,8 +107,9 @@ export default async function TodayPage() {
           <BlinkCursor />
         </h1>
         <p className="mt-4 max-w-xl font-sans text-lg leading-relaxed text-marble-dim text-pretty">
-          What are you working out? Set it down half-formed — I&apos;ll ask the
-          questions that sharpen it. The thinking stays yours.
+          What are you working out? Set it down half-formed — I&apos;ll engage
+          it, press on the reasoning, and surface what sharpens it. The thinking
+          stays yours.
         </p>
 
         <div className="mt-7 flex flex-col flex-wrap gap-3 sm:flex-row sm:items-center">

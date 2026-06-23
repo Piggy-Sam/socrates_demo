@@ -1,41 +1,23 @@
 "use server";
 
-// Persistence for the text chat. The client calls ensureChatSession() on first
-// send (to get/create an open `chat` session), then persistTurn() after each
-// completed Socrates reply. Everything is scoped to the authenticated user.
+// Mutations for the text chat, callable from the client. Reads used by server
+// components live in ./queries (plain module, not actions). Everything is scoped
+// to the authenticated user.
 
-import { and, desc, eq, gt, isNull } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { messages, sessions } from "@/lib/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 
-// Reuse a recent open chat session rather than spawning a new one per page load.
-const SESSION_REUSE_WINDOW_MS = 6 * 60 * 60 * 1000; // 6 hours
-
 /**
- * Return the id of the user's active `chat` session, creating one if none is
- * open (or the last one is stale). An open session has no ended_at.
+ * Start a NEW chat conversation and return its session id. Unlike the old
+ * reuse-an-open-session behavior, every "new chat" is its own durable thread the
+ * user can list and resume later (the ChatGPT-style model). Created lazily on
+ * the first send, so opening /chat without typing never spawns an empty row.
  */
-export async function ensureChatSession(): Promise<string> {
+export async function createChatSession(): Promise<string> {
   const user = await getCurrentUser();
   if (!user) throw new Error("Not authenticated.");
-
-  const since = new Date(Date.now() - SESSION_REUSE_WINDOW_MS);
-  const existing = await db
-    .select({ id: sessions.id })
-    .from(sessions)
-    .where(
-      and(
-        eq(sessions.userId, user.id),
-        eq(sessions.type, "chat"),
-        isNull(sessions.endedAt),
-        gt(sessions.startedAt, since),
-      ),
-    )
-    .orderBy(desc(sessions.startedAt))
-    .limit(1);
-
-  if (existing[0]) return existing[0].id;
 
   const inserted = await db
     .insert(sessions)

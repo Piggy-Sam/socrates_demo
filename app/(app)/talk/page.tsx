@@ -5,7 +5,7 @@ import { CallScreen } from "@/components/call/call-screen";
 export const metadata: Metadata = {
   title: "Talk · Socrates",
   description:
-    "Think out loud. One instrument among several — Socrates asks, you reason.",
+    "Think out loud. One instrument among several — Socrates draws it out, you reason.",
 };
 
 export default async function TalkPage() {
