@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Plus, PanelLeft, X } from "lucide-react";
@@ -94,6 +94,48 @@ function SidebarBody({
 export function ChatSidebar({ sessions }: { sessions: ChatListItem[] }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  // While open: close on Escape, trap Tab focus, and move focus into the
+  // drawer. On close, restore focus to the trigger button.
+  useEffect(() => {
+    if (!open) return;
+    closeRef.current?.focus();
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setOpen(false);
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const panel = dialogRef.current;
+      if (!panel) return;
+      const focusable = panel.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey) {
+        if (active === first || !panel.contains(active)) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else if (active === last || !panel.contains(active)) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      triggerRef.current?.focus();
+    };
+  }, [open]);
 
   return (
     <>
@@ -106,6 +148,7 @@ export function ChatSidebar({ sessions }: { sessions: ChatListItem[] }) {
 
       {/* Mobile: a toggle that opens a slide-over. */}
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen(true)}
         className="label-mono mb-4 inline-flex items-center gap-2 self-start rounded-sm border border-hairline px-3 py-2 text-marble-dim transition-colors hover:text-marble md:hidden"
@@ -116,15 +159,26 @@ export function ChatSidebar({ sessions }: { sessions: ChatListItem[] }) {
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal>
+        <div
+          className="fixed inset-0 z-50 md:hidden"
+          role="dialog"
+          aria-modal
+          aria-labelledby="chat-drawer-heading"
+        >
           <div
             className="absolute inset-0 bg-ink/70 backdrop-blur-sm"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute inset-y-0 left-0 w-[82%] max-w-xs border-r border-hairline bg-ink p-5 shadow-xl">
+          <div
+            ref={dialogRef}
+            className="absolute inset-y-0 left-0 w-[82%] max-w-xs border-r border-hairline bg-ink p-5 shadow-xl"
+          >
             <div className="mb-4 flex items-center justify-between">
-              <p className="label-mono text-marble-dim">Conversations</p>
+              <p id="chat-drawer-heading" className="label-mono text-marble-dim">
+                Conversations
+              </p>
               <button
+                ref={closeRef}
                 type="button"
                 onClick={() => setOpen(false)}
                 aria-label="Close"
