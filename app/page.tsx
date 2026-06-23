@@ -36,8 +36,8 @@ export default function Home() {
         <Wordmark size="sm" />
         <nav className="flex items-center gap-2.5">
           <ThemeToggle />
-          <LinkButton href="/design" variant="outline" size="sm">
-            Design system
+          <LinkButton href="/about" variant="outline" size="sm">
+            About
           </LinkButton>
         </nav>
       </header>
@@ -83,7 +83,7 @@ export default function Home() {
             <LinkButton href="/login" size="lg" variant="gold">
               Begin
             </LinkButton>
-            <LinkButton href="/design" size="lg" variant="ghost">
+            <LinkButton href="/about" size="lg" variant="ghost">
               See the instrument
             </LinkButton>
           </div>
