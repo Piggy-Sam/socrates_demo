@@ -41,7 +41,7 @@ export function DotMatrix({ className = "", spacing = 30, intensity = 1 }: Props
       w = canvas.clientWidth; h = canvas.clientHeight;
       canvas.width = Math.floor(w * dpr); canvas.height = Math.floor(h * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      S = w < 700 ? 18 : 24; // denser, especially on mobile
+      S = w < 700 ? 14 : 19; // dense, especially on mobile
       cols = Math.ceil(w / S) + 1; rows = Math.ceil(h / S) + 1;
       if (reduce) draw(0);
     };
@@ -69,9 +69,11 @@ export function DotMatrix({ className = "", spacing = 30, intensity = 1 }: Props
               colorK = Math.min(1, colorK + fe * 0.55);
             }
           }
+          const fa = Math.min(0.85, alpha) * intensity;
+          if (fa < 0.02) continue; // cull invisible dots
           ctx.beginPath();
           ctx.arc(x, y, radius, 0, 6.2832);
-          ctx.fillStyle = rgba(mix(accent, lit, colorK), Math.min(0.85, alpha) * intensity);
+          ctx.fillStyle = rgba(mix(accent, lit, colorK), fa);
           ctx.fill();
         }
       }

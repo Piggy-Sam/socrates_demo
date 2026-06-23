@@ -46,8 +46,8 @@ export function LandingField({ faceId, className = "", spacing = 22 }: Props) {
       w = canvas.clientWidth; h = canvas.clientHeight;
       canvas.width = Math.floor(w * dpr); canvas.height = Math.floor(h * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      // denser lattice, especially on mobile (higher face resolution)
-      S = w < 700 ? 14 : 19;
+      // dense lattice, especially on mobile (higher face resolution)
+      S = w < 700 ? 11 : 15;
       cols = Math.ceil(w / S) + 1; rows = Math.ceil(h / S) + 1;
     };
 
@@ -90,7 +90,7 @@ export function LandingField({ faceId, className = "", spacing = 22 }: Props) {
         fy = r.top + r.height / 2 - (F.h * fscale) / 2 - lift;
         rcx = r.left + r.width / 2;
         rcy = r.top + r.height / 2 - lift;
-        orbR = Math.min(r.width, r.height) * 0.46;
+        orbR = Math.min(r.width, r.height) * 0.62;
         maxD = Math.hypot(Math.max(rcx, w - rcx), Math.max(rcy, h - rcy)) || 1;
       }
 
@@ -156,9 +156,11 @@ export function LandingField({ faceId, className = "", spacing = 22 }: Props) {
             }
           }
 
+          const fa = Math.min(1, alpha);
+          if (fa < 0.018) continue; // cull invisible dots (keeps it fast)
           ctx.beginPath();
           ctx.arc(X, Y, Math.max(0.4, radius), 0, 6.2832);
-          ctx.fillStyle = rgba(color, Math.min(1, alpha));
+          ctx.fillStyle = rgba(color, fa);
           ctx.fill();
         }
       }

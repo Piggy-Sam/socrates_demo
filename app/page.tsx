@@ -51,7 +51,16 @@ export default function Home() {
           className="order-1 h-[32vh] min-h-[220px] lg:h-[80vh]"
         />
 
-        <div className="order-2 flex flex-col items-center text-center lg:items-start lg:text-left">
+        <div className="relative isolate order-2 flex flex-col items-center text-center lg:items-start lg:text-left">
+          {/* diffused scrim — soft separation of the text from the field beneath */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -inset-x-14 -inset-y-12 -z-10"
+            style={{
+              background:
+                "radial-gradient(ellipse at center, color-mix(in srgb, var(--ink) 82%, transparent) 0%, color-mix(in srgb, var(--ink) 58%, transparent) 44%, transparent 75%)",
+            }}
+          />
           <p className="label-mono mb-5 flex items-center gap-2 animate-[fade-rise_0.7s_var(--ease-instrument)_both]">
             <span aria-hidden>&gt;</span>
             An instrument for the examined life
