@@ -10,8 +10,9 @@ import {
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ArrowUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 import { StarMark } from "@/components/brand/wordmark";
-import { ensureChatSession, persistTurn } from "./actions";
+import { createChatSession, persistTurn } from "./actions";
 
 type Turn = {
   id: string;
@@ -25,14 +26,23 @@ function newId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
-export function ChatClient({ displayName }: { displayName: string | null }) {
-  const [turns, setTurns] = useState<Turn[]>([]);
+export function ChatClient({
+  displayName,
+  initialTurns = [],
+  initialSessionId = null,
+}: {
+  displayName: string | null;
+  initialTurns?: Turn[];
+  initialSessionId?: string | null;
+}) {
+  const router = useRouter();
+  const [turns, setTurns] = useState<Turn[]>(initialTurns);
   const [draft, setDraft] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const reduce = useReducedMotion();
 
-  const sessionIdRef = useRef<string | null>(null);
+  const sessionIdRef = useRef<string | null>(initialSessionId);
   const sessionInitRef = useRef<Promise<string> | null>(null);
   const turnsRef = useRef<Turn[]>(turns);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -57,7 +67,7 @@ export function ChatClient({ displayName }: { displayName: string | null }) {
   const ensureSession = useCallback((): Promise<string> => {
     if (sessionIdRef.current) return Promise.resolve(sessionIdRef.current);
     if (!sessionInitRef.current) {
-      sessionInitRef.current = ensureChatSession()
+      sessionInitRef.current = createChatSession()
         .then((id) => {
           sessionIdRef.current = id;
           return id;
@@ -159,13 +169,23 @@ export function ChatClient({ displayName }: { displayName: string | null }) {
     // Persist the completed exchange (best-effort; never block the UI).
     if (assistantText.trim()) {
       try {
+        const isNewConversation = !sessionIdRef.current;
         const sessionId = await ensureSession();
         await persistTurn(sessionId, text, assistantText);
+        if (isNewConversation) {
+          // Promote this brand-new thread to its own resumable URL and surface it
+          // in the sidebar. router.replace() moves the app to /chat/<id> (so the
+          // router, the address bar, and "New chat" all agree); router.refresh()
+          // re-fetches the layout's conversation list. The [id] page re-mounts
+          // ChatClient with the just-saved turns from the DB, so nothing is lost.
+          router.replace(`/chat/${sessionId}`);
+          router.refresh();
+        }
       } catch (err) {
         console.error("[chat] persist failed", err);
       }
     }
-  }, [draft, streaming, ensureSession]);
+  }, [draft, streaming, ensureSession, router]);
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -275,7 +295,7 @@ function TurnBlock({
       {isUser ? (
         <div className="flex flex-col items-end">
           <p className="label-mono mb-1.5 text-marble-dim">You</p>
-          <p className="text-pretty max-w-[85%] whitespace-pre-wrap rounded-md rounded-tr-sm border border-hairline bg-raised px-4 py-2.5 text-right font-sans text-[1.0625rem] leading-relaxed text-marble">
+          <p className="text-pretty max-w-[85%] whitespace-pre-wrap rounded-md rounded-tr-sm border border-hairline bg-raised px-4 py-2.5 text-left font-sans text-[1.0625rem] leading-relaxed text-marble">
             {turn.content}
           </p>
         </div>
@@ -341,8 +361,9 @@ function EmptyState({
         {first ? `${first}, what's on your mind?` : "What's on your mind?"}
       </p>
       <p className="text-pretty mt-3 max-w-prose font-sans text-base text-marble-dim">
-        Start anywhere &mdash; a half-formed thought is enough. He&rsquo;ll ask
-        the questions; the thinking stays yours.
+        Start anywhere &mdash; a half-formed thought is enough. He&rsquo;ll
+        engage it, press where it&rsquo;s soft, and surface what sharpens it
+        &mdash; the thinking stays yours.
       </p>
     </motion.div>
   );
