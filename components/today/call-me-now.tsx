@@ -55,7 +55,7 @@ export function CallMeNow({
           body?.error ||
             (phone
               ? "Couldn't place the call just now. Try again in a moment."
-              : "Add a phone number in your profile first, then I can call."),
+              : "Add a phone number in your profile first."),
         );
         return;
       }

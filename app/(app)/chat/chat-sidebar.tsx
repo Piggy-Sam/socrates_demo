@@ -57,7 +57,8 @@ function SidebarBody({
       <nav className="-mx-1 flex-1 space-y-0.5 overflow-y-auto px-1">
         {sessions.length === 0 ? (
           <p className="px-2 py-2 font-sans text-sm text-marble-dim">
-            Nothing yet. What you talk through gets saved here.
+            Nothing yet. Conversations appear here once you&rsquo;ve sent a
+            message and Socrates has replied.
           </p>
         ) : (
           sessions.map((s) => {

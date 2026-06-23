@@ -29,7 +29,7 @@ export function GenerateRecap() {
         error?: string;
       };
       if (!res.ok || !data.ok || !data.content) {
-        setError(data.error || "I couldn't gather the week just now.");
+        setError(data.error || "Couldn't gather the week just now.");
         setState("error");
         return;
       }

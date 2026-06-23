@@ -362,7 +362,7 @@ function EmptyState({
         {first ? `${first}, what's on your mind?` : "What's on your mind?"}
       </p>
       <p className="text-pretty mt-3 max-w-prose font-sans text-base text-marble-dim">
-        Start anywhere &mdash; a half-formed thought is enough. He&rsquo;ll
+        Start anywhere &mdash; a half-formed thought is enough. Socrates will
         engage it, press where it&rsquo;s soft, and surface what sharpens it
         &mdash; the thinking stays yours.
       </p>
