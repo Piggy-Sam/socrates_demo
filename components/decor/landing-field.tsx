@@ -30,7 +30,7 @@ export function LandingField({ faceId, className = "", spacing = 22 }: Props) {
 
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    const S = spacing;
+    let S = spacing;
     let w = 0, h = 0, cols = 0, rows = 0, raf = 0;
     const start = performance.now();
 
@@ -46,15 +46,17 @@ export function LandingField({ faceId, className = "", spacing = 22 }: Props) {
       w = canvas.clientWidth; h = canvas.clientHeight;
       canvas.width = Math.floor(w * dpr); canvas.height = Math.floor(h * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      // denser lattice, especially on mobile (higher face resolution)
+      S = w < 700 ? 14 : 19;
       cols = Math.ceil(w / S) + 1; rows = Math.ceil(h / S) + 1;
     };
 
-    // morph m: 0 = face, 1 = orb. Random schedule, ~20% orb.
+    // morph m: 0 = face, 1 = orb. Random schedule; the orb HOLDS a while.
     let m = 0, target = 0, next = 6 + Math.random() * 5;
     const stepMorph = (t: number) => {
       if (t > next) {
-        if (target === 0) { target = 1; next = t + 2 + Math.random() * 2.2; }
-        else { target = 0; next = t + 9 + Math.random() * 7; }
+        if (target === 0) { target = 1; next = t + 5 + Math.random() * 4; }
+        else { target = 0; next = t + 11 + Math.random() * 7; }
       }
       m += (target - m) * 0.045;
     };
@@ -62,7 +64,7 @@ export function LandingField({ faceId, className = "", spacing = 22 }: Props) {
     const F = BUST_FACE; // { w, h, d[] }
     const faceAspect = F.w / F.h;
 
-    const GR = 150; // cursor reach
+    const GR = 300; // cursor reach — a large, gentle glow
 
     const draw = (now: number) => {
       const t = (now - start) / 1000;
@@ -83,10 +85,11 @@ export function LandingField({ faceId, className = "", spacing = 22 }: Props) {
         } else {
           fscale = (r.width * fit) / F.w;
         }
+        const lift = r.height * 0.06; // sit a touch higher in the box
         fx = r.left + r.width / 2 - (F.w * fscale) / 2;
-        fy = r.top + r.height / 2 - (F.h * fscale) / 2;
+        fy = r.top + r.height / 2 - (F.h * fscale) / 2 - lift;
         rcx = r.left + r.width / 2;
-        rcy = r.top + r.height / 2;
+        rcy = r.top + r.height / 2 - lift;
         orbR = Math.min(r.width, r.height) * 0.46;
         maxD = Math.hypot(Math.max(rcx, w - rcx), Math.max(rcy, h - rcy)) || 1;
       }
@@ -144,11 +147,12 @@ export function LandingField({ faceId, className = "", spacing = 22 }: Props) {
           if (ptr.active) {
             const d = Math.hypot(X - ptr.x, Y - ptr.y);
             if (d < GR) {
+              // large, gentle glow — subtle per dot, non-uniform (entropy)
               const fe = smooth(1 - d / GR);
-              const ent = 0.4 + 0.9 * ce; // per-dot entropy, lively
-              radius += fe * 3.2 * ent;
-              alpha += fe * 0.5 * ent;
-              color = mix(color, lit, fe * 0.65);
+              const ent = 0.4 + 0.9 * ce;
+              radius += fe * 1.7 * ent;
+              alpha += fe * 0.3 * ent;
+              color = mix(color, lit, fe * 0.45);
             }
           }
 

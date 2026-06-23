@@ -43,16 +43,16 @@ export default function Home() {
       </header>
 
       {/* hero — the living face (left), the wordmark + tagline + actions (right) */}
-      <section className="grid flex-1 items-center gap-6 px-6 py-10 lg:grid-cols-2 lg:gap-10 lg:px-16">
+      <section className="grid flex-1 items-center gap-4 px-6 py-6 lg:grid-cols-2 lg:gap-10 lg:py-10 lg:px-16">
         {/* spacer — the unified field draws the emerging face into this box */}
         <div
           id="hero-face"
           aria-hidden
-          className="order-1 h-[48vh] min-h-[330px] lg:h-[80vh]"
+          className="order-1 h-[32vh] min-h-[220px] lg:h-[80vh]"
         />
 
         <div className="order-2 flex flex-col items-center text-center lg:items-start lg:text-left">
-          <p className="label-mono mb-7 flex items-center gap-2 animate-[fade-rise_0.7s_var(--ease-instrument)_both]">
+          <p className="label-mono mb-5 flex items-center gap-2 animate-[fade-rise_0.7s_var(--ease-instrument)_both]">
             <span aria-hidden>&gt;</span>
             An instrument for the examined life
           </p>
@@ -61,16 +61,16 @@ export default function Home() {
             <Wordmark size="xl" href={null} withStar={false} />
           </div>
 
-          <h1 className="mt-9 font-display text-xl font-light leading-relaxed tracking-tight text-marble-dim sm:text-[1.7rem]">
-            <span className="block whitespace-nowrap">
+          <h1 className="mt-7 font-display text-xl font-light leading-relaxed tracking-tight text-marble-dim sm:text-[1.7rem]">
+            <span className="block sm:whitespace-nowrap">
               It doesn&apos;t hand you answers.
             </span>
-            <span className="block whitespace-nowrap text-marble">
+            <span className="block text-marble sm:whitespace-nowrap">
               It sharpens your own.
             </span>
           </h1>
 
-          <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row">
+          <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row">
             <LinkButton href="/login" size="lg" variant="gold">
               Begin
             </LinkButton>
