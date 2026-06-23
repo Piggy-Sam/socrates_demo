@@ -12,7 +12,7 @@ import { ArrowUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { StarMark } from "@/components/brand/wordmark";
-import { createChatSession, persistTurn } from "./actions";
+import { createChatSession, extractChatSession, persistTurn } from "./actions";
 
 type Turn = {
   id: string;
@@ -174,6 +174,12 @@ export function ChatClient({
       const isNewConversation = !sessionIdRef.current;
       const sessionId = await ensureSession();
       await persistTurn(sessionId, text, assistantText);
+      // Feed this written conversation into the bank via the SAME pipeline voice
+      // uses (entries + themes + daily summary). Fire-and-forget — never block or
+      // break the chat UI; extractChatSession is idempotent across re-runs.
+      void extractChatSession(sessionId).catch((err) => {
+        console.error("[chat] bank extraction failed", err);
+      });
       if (isNewConversation) {
         // Promote this brand-new thread to its own resumable URL and surface it
         // in the sidebar. router.replace() moves the app to /chat/<id> (so the
@@ -365,6 +371,9 @@ function EmptyState({
         Start anywhere &mdash; a half-formed thought is enough. Socrates will
         engage it, press where it&rsquo;s soft, and surface what sharpens it
         &mdash; the thinking stays yours.
+      </p>
+      <p className="label-mono mt-4 text-marble-dim">
+        What you write joins your bank, same as what you speak.
       </p>
     </motion.div>
   );
