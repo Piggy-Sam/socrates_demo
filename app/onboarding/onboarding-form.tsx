@@ -19,17 +19,21 @@ const FIELD =
   "h-11 w-full rounded-sm border border-hairline-strong bg-raised-2 px-3.5 font-sans text-sm text-marble outline-none transition-colors duration-200 placeholder:text-marble-dim hover:border-accent/50 focus:border-accent disabled:opacity-50";
 
 function Field({
+  htmlFor,
   label,
   hint,
   children,
 }: {
+  htmlFor: string;
   label: string;
   hint?: string;
   children: React.ReactNode;
 }) {
   return (
     <div>
-      <label className="label-mono mb-2 block">{label}</label>
+      <label htmlFor={htmlFor} className="label-mono mb-2 block">
+        {label}
+      </label>
       {children}
       {hint && (
         <p className="mt-1.5 font-sans text-xs leading-relaxed text-marble-dim">
@@ -82,8 +86,9 @@ export function OnboardingForm({ defaults }: Props) {
       transition={{ duration: 0.6, ease: [0.2, 0.8, 0.2, 1] }}
       className="mt-10 flex flex-col gap-6"
     >
-      <Field label="What should I call you?">
+      <Field htmlFor="displayName" label="What should I call you?">
         <input
+          id="displayName"
           name="displayName"
           type="text"
           required
@@ -97,8 +102,13 @@ export function OnboardingForm({ defaults }: Props) {
       </Field>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <Field label="Your time zone" hint="So the call lands in your own day.">
+        <Field
+          htmlFor="timezone"
+          label="Your time zone"
+          hint="So the call lands in your own day."
+        >
           <input
+            id="timezone"
             name="timezone"
             type="text"
             required
@@ -110,10 +120,12 @@ export function OnboardingForm({ defaults }: Props) {
         </Field>
 
         <Field
+          htmlFor="dailyCallTime"
           label="When should I call?"
           hint="A local time, 24-hour. You can change it later."
         >
           <input
+            id="dailyCallTime"
             name="dailyCallTime"
             type="time"
             required
@@ -124,10 +136,12 @@ export function OnboardingForm({ defaults }: Props) {
       </div>
 
       <Field
+        htmlFor="phoneE164"
         label="Where can I reach you?"
         hint="The demo can only call a Twilio-verified number — use yours, in full international form (e.g. +1 555 010 0123)."
       >
         <input
+          id="phoneE164"
           name="phoneE164"
           type="tel"
           required

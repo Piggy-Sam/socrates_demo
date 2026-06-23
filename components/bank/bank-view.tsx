@@ -248,7 +248,7 @@ export function BankView({
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search your thoughts and threads…"
               aria-label="Search your thoughts"
-              className="h-10 w-full bg-transparent pl-7 pr-3 font-sans text-sm text-marble placeholder:text-marble-dim focus:outline-none"
+              className="h-10 w-full rounded-sm bg-transparent pl-7 pr-3 font-sans text-sm text-marble placeholder:text-marble-dim focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
             />
           </div>
 

@@ -252,7 +252,7 @@ export function ChatClient({
               rows={1}
               placeholder="What&rsquo;s on your mind?"
               aria-label="Your message to Socrates"
-              className="max-h-[200px] min-h-[2.75rem] flex-1 resize-none bg-transparent py-3 pr-1 font-sans text-base text-marble placeholder:text-marble-dim outline-none"
+              className="max-h-[200px] min-h-[2.75rem] flex-1 resize-none rounded-sm bg-transparent py-3 pr-1 font-sans text-base text-marble placeholder:text-marble-dim outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
             />
           </div>
           <Button

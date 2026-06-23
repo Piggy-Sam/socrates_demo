@@ -114,8 +114,10 @@ function Dot({
             "aria-label": `${star.type}: ${star.content.slice(0, 80)}`,
           }
         : { "aria-hidden": true })}
-      className={`group absolute block -translate-x-1/2 -translate-y-1/2 rounded-full ${
-        interactive ? "cursor-pointer" : "pointer-events-none"
+      className={`group absolute block -translate-x-1/2 -translate-y-1/2 rounded-full outline-none ${
+        interactive
+          ? "cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
+          : "pointer-events-none"
       }`}
       style={{ left: `${star.x}%`, top: `${star.y}%` }}
       initial={reduce ? false : { opacity: 0, scale: 0 }}
