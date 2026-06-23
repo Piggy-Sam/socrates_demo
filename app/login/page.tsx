@@ -2,7 +2,7 @@
 
 import { Suspense, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, useReducedMotion } from "motion/react";
 import { ArrowLeft, Check } from "lucide-react";
 import { DotMatrix } from "@/components/decor/dot-matrix";
@@ -12,18 +12,65 @@ import { createClient } from "@/lib/supabase/client";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+type Mode = "signin" | "signup";
+type Sent = { kind: "link" | "reset" | "confirm"; email: string };
+
+// Map Supabase auth errors to calm, honest copy. Crucially: never tell the user
+// to "try again" on a rate limit — that just burns more of the email budget.
+function friendlyAuthError(err: {
+  message?: string;
+  status?: number;
+  code?: string;
+}): string {
+  const msg = err?.message ?? "";
+  if (err?.status === 429 || /rate limit/i.test(msg)) {
+    return "Too many sign-in emails just now. Wait a few minutes — or sign in with your password.";
+  }
+  if (/invalid login credentials/i.test(msg)) {
+    return "That email and password don't match. Check them, or reset your password.";
+  }
+  if (/already registered|already been registered/i.test(msg)) {
+    return "That email already has an account — sign in instead.";
+  }
+  if (/at least 6|password should be/i.test(msg)) {
+    return "Use a password of at least 6 characters.";
+  }
+  if (/email not confirmed/i.test(msg)) {
+    return "Confirm your email first — open the confirmation link we sent.";
+  }
+  return msg || "Something went wrong. Try again in a moment.";
+}
+
+const INPUT_CLS =
+  "h-11 w-full rounded-sm border border-hairline-strong bg-raised-2 pl-8 pr-3.5 font-mono-display text-sm text-marble outline-none transition-colors duration-200 placeholder:text-marble-dim hover:border-accent/50 focus:border-accent disabled:opacity-50";
+
 function LoginInner() {
   const params = useSearchParams();
+  const router = useRouter();
   const next = params.get("next") || "/today";
   const authError = params.get("error");
   const reduce = useReducedMotion();
 
+  const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "sending" | "sent">("idle");
+  const [password, setPassword] = useState("");
+  const [status, setStatus] = useState<"idle" | "working">("idle");
+  const [sent, setSent] = useState<Sent | null>(null);
   const [error, setError] = useState<string | null>(
     authError ? "That link didn't work. Let's try again." : null,
   );
 
+  const busy = status === "working";
+
+  const callbackUrl = (nextPath: string) =>
+    `${location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`;
+
+  function switchMode(to: Mode) {
+    setMode(to);
+    setError(null);
+  }
+
+  // Primary path: email + password — sign in, or create an account.
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const value = email.trim();
@@ -31,29 +78,95 @@ function LoginInner() {
       setError("That doesn't look like an email yet.");
       return;
     }
-
-    setError(null);
-    setStatus("sending");
-
-    const supabase = createClient();
-    const redirectTo = `${location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
-    const { error: otpError } = await supabase.auth.signInWithOtp({
-      email: value,
-      options: { emailRedirectTo: redirectTo },
-    });
-
-    if (otpError) {
-      setStatus("idle");
-      setError("Something went wrong sending the link. Try once more?");
+    if (password.length < 6) {
+      setError("Use a password of at least 6 characters.");
       return;
     }
 
-    setStatus("sent");
+    setError(null);
+    setStatus("working");
+    const supabase = createClient();
+
+    if (mode === "signin") {
+      const { error: err } = await supabase.auth.signInWithPassword({
+        email: value,
+        password,
+      });
+      if (err) {
+        setStatus("idle");
+        setError(friendlyAuthError(err));
+        return;
+      }
+      router.push(next);
+      router.refresh();
+      return;
+    }
+
+    // sign up: if email confirmation is off, a session comes back immediately;
+    // otherwise the user must confirm via email first.
+    const { data, error: err } = await supabase.auth.signUp({
+      email: value,
+      password,
+      options: { emailRedirectTo: callbackUrl(next) },
+    });
+    if (err) {
+      setStatus("idle");
+      setError(friendlyAuthError(err));
+      return;
+    }
+    if (data.session) {
+      router.push(next);
+      router.refresh();
+      return;
+    }
+    setStatus("idle");
+    setSent({ kind: "confirm", email: value });
+  }
+
+  // Fallback: passwordless magic link (the original flow).
+  async function sendMagicLink() {
+    const value = email.trim();
+    if (!EMAIL_RE.test(value)) {
+      setError("Enter your email first, then I'll send a link.");
+      return;
+    }
+    setError(null);
+    setStatus("working");
+    const supabase = createClient();
+    const { error: err } = await supabase.auth.signInWithOtp({
+      email: value,
+      options: { emailRedirectTo: callbackUrl(next) },
+    });
+    setStatus("idle");
+    if (err) {
+      setError(friendlyAuthError(err));
+      return;
+    }
+    setSent({ kind: "link", email: value });
+  }
+
+  async function sendReset() {
+    const value = email.trim();
+    if (!EMAIL_RE.test(value)) {
+      setError("Enter your email first, then I'll send a reset link.");
+      return;
+    }
+    setError(null);
+    setStatus("working");
+    const supabase = createClient();
+    const { error: err } = await supabase.auth.resetPasswordForEmail(value, {
+      redirectTo: callbackUrl("/reset-password"),
+    });
+    setStatus("idle");
+    if (err) {
+      setError(friendlyAuthError(err));
+      return;
+    }
+    setSent({ kind: "reset", email: value });
   }
 
   return (
     <main className="relative flex min-h-dvh flex-col items-center justify-center px-6 py-16">
-      {/* the living dot-matrix, behind everything */}
       <div className="fixed inset-0 -z-10">
         <DotMatrix />
       </div>
@@ -67,14 +180,18 @@ function LoginInner() {
         <div className="flex flex-col items-center text-center">
           <Wordmark size="md" href="/" />
 
-          {status === "sent" ? (
-            <Sent email={email.trim()} />
+          {sent ? (
+            <Sent sent={sent} />
           ) : (
             <>
-              <p className="label-mono mt-7">FIG.00 · Sign in</p>
+              <p className="label-mono mt-7">
+                FIG.00 · {mode === "signin" ? "Sign in" : "Create account"}
+              </p>
               <p className="mt-3 max-w-xs font-sans text-base leading-relaxed text-marble text-pretty">
-                An instrument for the examined life. Tell me where to reach you,
-                and we'll begin sharpening your own thinking.
+                An instrument for the examined life.{" "}
+                {mode === "signin"
+                  ? "Sign in to keep sharpening your own thinking."
+                  : "Make an account, and we'll begin."}
               </p>
 
               <form onSubmit={onSubmit} className="mt-8 w-full text-left">
@@ -101,10 +218,54 @@ function LoginInner() {
                       setEmail(e.target.value);
                       if (error) setError(null);
                     }}
-                    disabled={status === "sending"}
-                    className="h-11 w-full rounded-sm border border-hairline-strong bg-raised-2 pl-8 pr-3.5 font-mono-display text-sm text-marble outline-none transition-colors duration-200 placeholder:text-marble-dim hover:border-accent/50 focus:border-accent disabled:opacity-50"
+                    disabled={busy}
+                    className={INPUT_CLS}
                   />
                 </div>
+
+                <label
+                  htmlFor="password"
+                  className="label-mono mb-2 mt-4 block"
+                >
+                  Password
+                </label>
+                <div className="relative">
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 font-mono-display text-sm text-accent"
+                  >
+                    ›
+                  </span>
+                  <input
+                    id="password"
+                    name="password"
+                    type="password"
+                    autoComplete={
+                      mode === "signin" ? "current-password" : "new-password"
+                    }
+                    placeholder={
+                      mode === "signin" ? "your password" : "at least 6 characters"
+                    }
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (error) setError(null);
+                    }}
+                    disabled={busy}
+                    className={INPUT_CLS}
+                  />
+                </div>
+
+                {mode === "signin" && (
+                  <button
+                    type="button"
+                    onClick={sendReset}
+                    disabled={busy}
+                    className="mt-2.5 rounded-sm font-sans text-xs text-marble-dim underline-offset-2 transition-colors hover:text-marble hover:underline disabled:opacity-50"
+                  >
+                    Forgot password?
+                  </button>
+                )}
 
                 {error && (
                   <p
@@ -119,16 +280,53 @@ function LoginInner() {
                   type="submit"
                   variant="gold"
                   size="lg"
-                  disabled={status === "sending"}
+                  disabled={busy}
                   className="mt-5 w-full"
                 >
-                  {status === "sending" ? "Sending…" : "Send me a link"}
+                  {busy
+                    ? "…"
+                    : mode === "signin"
+                      ? "Sign in"
+                      : "Create account"}
                 </Button>
               </form>
 
               <p className="mt-6 font-sans text-xs leading-relaxed text-marble-dim">
-                No password. We'll email you a link that signs you in.
+                {mode === "signin" ? (
+                  <>
+                    New here?{" "}
+                    <button
+                      type="button"
+                      onClick={() => switchMode("signup")}
+                      className="rounded-sm text-marble underline-offset-2 transition-colors hover:underline"
+                    >
+                      Create an account
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    Already have an account?{" "}
+                    <button
+                      type="button"
+                      onClick={() => switchMode("signin")}
+                      className="rounded-sm text-marble underline-offset-2 transition-colors hover:underline"
+                    >
+                      Sign in
+                    </button>
+                  </>
+                )}
               </p>
+
+              <div className="mt-5 w-full border-t border-hairline pt-5">
+                <button
+                  type="button"
+                  onClick={sendMagicLink}
+                  disabled={busy}
+                  className="rounded-sm font-sans text-xs text-marble-dim underline-offset-2 transition-colors hover:text-marble hover:underline disabled:opacity-50"
+                >
+                  Email me a sign-in link instead
+                </button>
+              </div>
             </>
           )}
         </div>
@@ -145,8 +343,23 @@ function LoginInner() {
   );
 }
 
-function Sent({ email }: { email: string }) {
+function Sent({ sent }: { sent: Sent }) {
   const reduce = useReducedMotion();
+  const copy = {
+    link: {
+      label: "Link sent",
+      body: "Check your email — a sign-in link is on its way.",
+    },
+    reset: {
+      label: "Reset link sent",
+      body: "Check your email — a link to set a new password is on its way.",
+    },
+    confirm: {
+      label: "Confirm your email",
+      body: "Check your email — confirm your address to finish creating your account.",
+    },
+  }[sent.kind];
+
   return (
     <motion.div
       initial={reduce ? false : { opacity: 0, y: 8 }}
@@ -154,7 +367,7 @@ function Sent({ email }: { email: string }) {
       transition={{ duration: 0.5, ease: [0.2, 0.8, 0.2, 1] }}
       className="mt-7 flex flex-col items-center"
     >
-      <p className="label-mono">FIG.00 · Link sent</p>
+      <p className="label-mono">FIG.00 · {copy.label}</p>
       <span
         aria-hidden
         className="mt-5 flex size-11 items-center justify-center rounded-sm border border-accent text-accent"
@@ -162,15 +375,16 @@ function Sent({ email }: { email: string }) {
         <Check strokeWidth={1.8} className="size-5" />
       </span>
       <p className="mt-6 max-w-xs font-sans text-base leading-relaxed text-marble text-pretty">
-        Check your email — a link is on its way.
+        {copy.body}
       </p>
-      {email && (
+      {sent.email && (
         <p className="mt-2 font-mono-display text-xs tracking-wide text-marble-dim">
-          {email}
+          {sent.email}
         </p>
       )}
       <p className="mt-6 font-sans text-xs leading-relaxed text-marble-dim">
-        It can take a minute. You can close this tab once you've opened the link.
+        It can take a minute. You can close this tab once you&rsquo;ve opened the
+        link.
       </p>
     </motion.div>
   );
