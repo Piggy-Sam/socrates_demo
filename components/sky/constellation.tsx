@@ -144,7 +144,7 @@ function Dot({
       {interactive && (
         <span
           role="tooltip"
-          className={`pointer-events-none absolute z-20 w-52 max-w-[60vw] rounded-md border border-hairline-strong bg-raised p-3 opacity-0 shadow-xl transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100 ${
+          className={`ring-accent pointer-events-none absolute z-20 w-52 max-w-[60vw] rounded-md border border-hairline-strong bg-raised p-3 opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100 ${
             tooltipFlipX ? "right-3" : "left-3"
           } ${tooltipFlipY ? "top-3" : "bottom-3"}`}
         >

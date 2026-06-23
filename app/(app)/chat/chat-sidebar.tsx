@@ -42,7 +42,7 @@ function SidebarBody({
         aria-current={onNew ? "page" : undefined}
         className={`label-mono flex items-center gap-2 rounded-sm border px-3 py-2.5 transition-colors ${
           onNew
-            ? "border-accent text-accent"
+            ? "border-hairline-strong text-marble"
             : "border-hairline text-marble-dim hover:border-hairline-strong hover:text-marble"
         }`}
       >
@@ -171,7 +171,7 @@ export function ChatSidebar({ sessions }: { sessions: ChatListItem[] }) {
           />
           <div
             ref={dialogRef}
-            className="absolute inset-y-0 left-0 w-[82%] max-w-xs border-r border-hairline bg-ink p-5 shadow-xl"
+            className="absolute inset-y-0 left-0 w-[82%] max-w-xs border-r border-hairline-strong bg-ink p-5 backdrop-blur-sm"
           >
             <div className="mb-4 flex items-center justify-between">
               <p id="chat-drawer-heading" className="label-mono text-marble-dim">
