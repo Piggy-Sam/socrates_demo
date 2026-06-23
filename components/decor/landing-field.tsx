@@ -42,6 +42,39 @@ export function LandingField({ faceId, className = "", spacing = 22 }: Props) {
       marble = readRGBVar("--marble-rgb", marble);
     };
 
+    const F = BUST_FACE; // { w, h, d[] }
+    const faceAspect = F.w / F.h;
+
+    // Where the face sits — derived from the layout element's rect. This only
+    // changes on resize / layout, so we cache it and recompute via measure()
+    // instead of calling getBoundingClientRect() every frame.
+    const geom = {
+      has: false,
+      fx: 0, fy: 0, fscale: 0, rcx: 0, rcy: 0, orbR: 1, maxD: 1,
+    };
+    const measure = () => {
+      const el = document.getElementById(faceId);
+      const r = el?.getBoundingClientRect();
+      if (r && r.width > 4 && r.height > 4) {
+        geom.has = true;
+        const fit = 1.0;
+        if (r.width / r.height > faceAspect) {
+          geom.fscale = (r.height * fit) / F.h;
+        } else {
+          geom.fscale = (r.width * fit) / F.w;
+        }
+        const lift = r.height * 0.06; // sit a touch higher in the box
+        geom.fx = r.left + r.width / 2 - (F.w * geom.fscale) / 2;
+        geom.fy = r.top + r.height / 2 - (F.h * geom.fscale) / 2 - lift;
+        geom.rcx = r.left + r.width / 2;
+        geom.rcy = r.top + r.height / 2 - lift;
+        geom.orbR = Math.min(r.width, r.height) * 0.62;
+        geom.maxD = Math.hypot(Math.max(geom.rcx, w - geom.rcx), Math.max(geom.rcy, h - geom.rcy)) || 1;
+      } else {
+        geom.has = false;
+      }
+    };
+
     const resize = () => {
       w = canvas.clientWidth; h = canvas.clientHeight;
       canvas.width = Math.floor(w * dpr); canvas.height = Math.floor(h * dpr);
@@ -49,6 +82,7 @@ export function LandingField({ faceId, className = "", spacing = 22 }: Props) {
       // dense lattice, especially on mobile (higher face resolution)
       S = w < 700 ? 11 : 15;
       cols = Math.ceil(w / S) + 1; rows = Math.ceil(h / S) + 1;
+      measure(); // canvas size changed → face position / maxD changed
     };
 
     // morph m: 0 = face, 1 = orb. Random schedule; the orb HOLDS a while.
@@ -61,9 +95,6 @@ export function LandingField({ faceId, className = "", spacing = 22 }: Props) {
       m += (target - m) * 0.045;
     };
 
-    const F = BUST_FACE; // { w, h, d[] }
-    const faceAspect = F.w / F.h;
-
     const GR = 300; // cursor reach — a large, gentle glow
 
     const draw = (now: number) => {
@@ -72,27 +103,8 @@ export function LandingField({ faceId, className = "", spacing = 22 }: Props) {
       ptr.x += (ptr.tx - ptr.x) * 0.12;
       ptr.y += (ptr.ty - ptr.y) * 0.12;
 
-      // where the face sits this frame (follows the layout element)
-      const el = document.getElementById(faceId);
-      const r = el?.getBoundingClientRect();
-      let fx = 0, fy = 0, fscale = 0, rcx = 0, rcy = 0, orbR = 1, maxD = 1;
-      let has = false;
-      if (r && r.width > 4 && r.height > 4) {
-        has = true;
-        const fit = 1.0;
-        if (r.width / r.height > faceAspect) {
-          fscale = (r.height * fit) / F.h;
-        } else {
-          fscale = (r.width * fit) / F.w;
-        }
-        const lift = r.height * 0.06; // sit a touch higher in the box
-        fx = r.left + r.width / 2 - (F.w * fscale) / 2;
-        fy = r.top + r.height / 2 - (F.h * fscale) / 2 - lift;
-        rcx = r.left + r.width / 2;
-        rcy = r.top + r.height / 2 - lift;
-        orbR = Math.min(r.width, r.height) * 0.62;
-        maxD = Math.hypot(Math.max(rcx, w - rcx), Math.max(rcy, h - rcy)) || 1;
-      }
+      // where the face sits — cached (see measure()); recomputed on resize only
+      const { has, fx, fy, fscale, rcx, rcy, orbR, maxD } = geom;
 
       ctx.clearRect(0, 0, w, h);
       const lit = mix(accent, [255, 255, 255], 0.45);
@@ -180,10 +192,28 @@ export function LandingField({ faceId, className = "", spacing = 22 }: Props) {
       if (e.pointerType !== "mouse") ptr.active = false;
     };
 
+    // pause the RAF loop while the tab is hidden (saves CPU/battery); resume
+    // seamlessly when visible. Reduced-motion stays static throughout.
+    const onVisibility = () => {
+      if (reduce) return;
+      if (document.hidden) {
+        cancelAnimationFrame(raf);
+        raf = 0;
+      } else if (!raf) {
+        measure(); // layout may have shifted while hidden
+        raf = requestAnimationFrame(draw);
+      }
+    };
+
     readColors();
     resize();
+    // canvas box change → full resize (also re-measures); face cell change →
+    // just re-measure its cached geometry.
     const ro = new ResizeObserver(resize);
     ro.observe(canvas);
+    const faceRo = new ResizeObserver(measure);
+    const faceEl = document.getElementById(faceId);
+    if (faceEl) faceRo.observe(faceEl);
     const mo = new MutationObserver(readColors);
     mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
     window.addEventListener("pointermove", onMove, { passive: true });
@@ -191,16 +221,22 @@ export function LandingField({ faceId, className = "", spacing = 22 }: Props) {
     window.addEventListener("pointerup", onUp, { passive: true });
     window.addEventListener("pointercancel", onUp, { passive: true });
     window.addEventListener("pointerleave", onLeave);
-    raf = requestAnimationFrame(draw);
+    // the canvas is fixed but #hero-face scrolls with the page, so its
+    // viewport rect shifts on scroll — re-measure then (cheap, not per-frame).
+    window.addEventListener("scroll", measure, { passive: true });
+    document.addEventListener("visibilitychange", onVisibility);
+    if (!document.hidden) raf = requestAnimationFrame(draw);
 
     return () => {
       cancelAnimationFrame(raf);
-      ro.disconnect(); mo.disconnect();
+      ro.disconnect(); faceRo.disconnect(); mo.disconnect();
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerdown", onMove);
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onUp);
       window.removeEventListener("pointerleave", onLeave);
+      window.removeEventListener("scroll", measure);
+      document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [faceId, spacing]);
 
