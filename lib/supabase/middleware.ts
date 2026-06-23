@@ -2,8 +2,9 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { publicEnv } from "@/lib/env";
 
-// Public routes that don't require a session.
-const PUBLIC_PATHS = ["/", "/login", "/auth", "/design"];
+// Public routes that don't require a session. (/about is the renamed /design
+// reference; /reset-password must load so a recovery link can set a password.)
+const PUBLIC_PATHS = ["/", "/login", "/auth", "/about", "/reset-password"];
 
 /** Refresh the auth session on every request and gate the app routes. */
 export async function updateSession(request: NextRequest) {
