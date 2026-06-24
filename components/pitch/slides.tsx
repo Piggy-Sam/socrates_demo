@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight, Phone, ChevronDown } from "lucide-react";
+import { ArrowRight, ArrowUp, Phone, ChevronDown, Grid3x3, List } from "lucide-react";
 import { BustMark } from "@/components/brand/bust-mark";
-import { Wordmark } from "@/components/brand/wordmark";
+import { Wordmark, BlinkCursor, StarMark } from "@/components/brand/wordmark";
 import { BreathingStar, type StarState } from "@/components/sky/breathing-star";
 import { Constellation } from "@/components/sky/constellation";
-import type { SkyStar } from "@/lib/constellation";
+import { SummaryMarkdown } from "@/components/summary/markdown";
+import { TYPE_GLYPH, type EntryType, type SkyStar } from "@/lib/constellation";
 import { Button, LinkButton } from "@/components/ui/button";
 import { startDemoTalk } from "@/app/pitch/actions";
 import {
@@ -48,15 +49,6 @@ function Display({
   );
 }
 
-/** A supporting line, muted, beneath the display line. */
-function Support({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="mt-7 max-w-2xl text-base leading-relaxed text-pretty text-marble-dim sm:text-lg">
-      {children}
-    </p>
-  );
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // PRODUCT-SURFACE MOCKS — faithful, STATIC reproductions of the real surfaces,
 // built with the same tokens/classes and the AUTHENTIC curated demo content (the
@@ -66,80 +58,105 @@ function Support({ children }: { children: React.ReactNode }) {
 // Content is verbatim from scripts/seed-demo.mjs — no lorem.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** The framed chrome a surface mock sits in — a hairline "screen" with a label. */
-function SurfaceFrame({
-  label,
-  className = "",
+/**
+ * An app-like FRAME so a product slide reads as "the real app, on screen" rather
+ * than a bullet slide. It echoes the real <AppNav>: the wordmark, the TODAY /
+ * BANK / CHAT / … tabs (the active one in the single rationed accent), and a
+ * "Talk now" affordance — but it's inert chrome (no links, no router). The
+ * surface itself fills the body. Everything here is static DOM so it prints.
+ */
+const APP_TABS = ["Today", "The bank", "Chat", "Calls", "Recap"] as const;
+
+function AppFrame({
+  active,
   children,
 }: {
-  label: string;
-  className?: string;
+  active: (typeof APP_TABS)[number];
   children: React.ReactNode;
 }) {
   return (
-    <div
-      className={`flex flex-col overflow-hidden rounded-md border border-hairline bg-raised/50 ${className}`}
-    >
-      <div className="flex items-center gap-2 border-b border-hairline px-4 py-2.5">
-        <span className="flex gap-1.5" aria-hidden>
-          <span className="size-2 rounded-full bg-marble-dim/30" />
-          <span className="size-2 rounded-full bg-marble-dim/30" />
-          <span className="size-2 rounded-full bg-marble-dim/30" />
+    <div className="flex h-full w-full flex-col overflow-hidden rounded-lg border border-hairline-strong bg-ink shadow-[0_24px_80px_-32px_rgba(0,0,0,0.6)]">
+      {/* the nav bar — a faithful, inert echo of the real AppNav */}
+      <div className="flex shrink-0 flex-wrap items-center gap-x-5 gap-y-2 border-b border-hairline bg-ink/80 px-5 py-3 backdrop-blur-md">
+        <Wordmark size="sm" href={null} staticCursor />
+        <span className="label-mono rounded-sm border border-accent/40 px-1.5 py-0.5 leading-none text-accent">
+          Demo
         </span>
-        <span className="label-mono ml-1 text-marble-dim">{label}</span>
+        <nav className="flex items-center gap-0.5">
+          {APP_TABS.map((t) => (
+            <span
+              key={t}
+              aria-current={t === active ? "page" : undefined}
+              className={`label-mono inline-flex items-center rounded-sm px-2.5 py-1.5 ${
+                t === active ? "text-accent" : "text-marble-dim"
+              }`}
+            >
+              {t}
+            </span>
+          ))}
+        </nav>
+        <span className="ml-auto inline-flex items-center rounded-sm border border-hairline-strong px-3 py-1.5 label-mono text-marble-dim">
+          Talk now
+        </span>
       </div>
-      <div className="min-h-0 flex-1 overflow-hidden p-5">{children}</div>
+      {/* the surface body */}
+      <div className="min-h-0 flex-1 overflow-hidden px-7 py-6 sm:px-10 sm:py-7">
+        {children}
+      </div>
     </div>
   );
 }
 
-/** /today — greeting + "Today, distilled" + a "Worth returning to" pattern. */
-function TodayMock() {
+/**
+ * /today — a faithful, large reproduction of the real Today page: the weekday
+ * kicker, the "› Afternoon, Human." greeting with the blinking caret, the
+ * "FIG.01 · Today, distilled" block rendered through the REAL <SummaryMarkdown>
+ * on the REAL seeded daily summary, and the "Worth returning to" pattern handed
+ * back as an open question. Word for word from scripts/seed-demo.mjs. All static
+ * DOM — it prints.
+ */
+// The daysAgo:0 daily summary — verbatim from seed-demo.mjs DAILY[0].
+const TODAY_DISTILLED = `Today the month-long thread finally said its own name. Watching a classmate defend an essay he could argue for but not reason through, you stopped circling and named it: AI agency was never about whether the machine can act for you. It's whether you still think — or whether you've handed it over and kept the feeling of having thought.
+
+You turned the line on your own product, which is the only honest place to point it: every feature is a fork — does it make someone stronger without you, or weaker without you? You decided it never hands you the conclusion, even when handing it over would feel kinder.`;
+
+// The flagship pattern's open question — verbatim tail of PATTERNS[0].summary.
+const TODAY_PATTERN =
+  "When does a tool stop sharpening your thinking and start replacing it — and how would you know from the inside?";
+
+function TodaySurface() {
   return (
-    <SurfaceFrame label="socrates · /today" className="h-full">
-      <div className="flex h-full flex-col gap-5 overflow-hidden">
-        {/* greeting — the page's one accent: the prompt caret */}
-        <div>
-          <p className="label-mono mb-2 text-marble-dim">TODAY</p>
-          <h3 className="flex items-baseline font-display text-2xl font-light tracking-tight text-marble">
-            <span aria-hidden className="mr-2.5 text-accent">
-              &rsaquo;
-            </span>
-            <span>Afternoon, Human.</span>
-          </h3>
-        </div>
-
-        {/* today, distilled */}
-        <div className="border-t border-hairline pt-4">
-          <p className="label-mono mb-3 text-marble-dim">
-            FIG.01 · Today, distilled
-          </p>
-          <p className="text-[0.9375rem] leading-relaxed text-pretty text-marble">
-            Today the month-long thread finally said its own name. You stopped
-            circling and named it:{" "}
-            <span className="text-marble-dim">
-              AI agency was never about whether the machine can act for you.
-              It&rsquo;s whether you still think — or whether you&rsquo;ve handed
-              it over and kept the feeling of having thought.
-            </span>
-          </p>
-        </div>
-
-        {/* worth returning to — a pattern handed back as an open question */}
-        <div className="border-t border-hairline pt-4">
-          <p className="label-mono mb-3 text-marble-dim">Worth returning to</p>
-          <p className="text-[0.9375rem] leading-relaxed text-pretty text-marble">
-            The open question stands on its own: when does a tool stop sharpening
-            your thinking and start replacing it — and how would you know from
-            the inside?
-          </p>
-          <span className="label-mono mt-2.5 inline-flex items-center gap-1.5 text-marble-dim">
-            Press on this
-            <ArrowRight className="size-3.5" strokeWidth={1.6} aria-hidden />
+    <div className="mx-auto flex h-full max-w-2xl flex-col overflow-hidden">
+      {/* greeting — the page's one accent: the prompt caret + cursor */}
+      <div className="shrink-0">
+        <p className="label-mono mb-3">FRIDAY, JUNE 26</p>
+        <h1 className="flex items-baseline font-display text-3xl font-light leading-tight tracking-tight text-marble sm:text-4xl">
+          <span aria-hidden className="mr-3 text-accent">
+            &rsaquo;
           </span>
-        </div>
+          <span>Afternoon, Human.</span>
+          <BlinkCursor noBlink />
+        </h1>
       </div>
-    </SurfaceFrame>
+
+      {/* today, distilled — the REAL renderer on the REAL summary */}
+      <section className="mt-7 border-t border-hairline pt-6">
+        <p className="label-mono mb-4">FIG.01 · Today, distilled</p>
+        <SummaryMarkdown content={TODAY_DISTILLED} />
+      </section>
+
+      {/* worth returning to — a pattern handed back as an open question */}
+      <section className="mt-6 border-t border-hairline pt-6">
+        <p className="label-mono mb-4">Worth returning to</p>
+        <p className="font-sans text-lg leading-relaxed text-marble text-pretty">
+          {TODAY_PATTERN}
+        </p>
+        <span className="label-mono mt-2.5 inline-flex items-center gap-1.5 text-marble-dim">
+          Press on this
+          <ArrowRight className="size-3.5" strokeWidth={1.6} aria-hidden />
+        </span>
+      </section>
+    </div>
   );
 }
 
@@ -167,62 +184,104 @@ const BANK_STARS: SkyStar[] = [
   { id: "b-bar", type: "decision", brightness: 0.3, themes: ["direction"], content: "My bar: one real person, who isn't my mum, uses it and it changes how they think. One mind that moved." },
 ];
 
-/** /bank — the signature dot-field of thoughts (REUSES the real Constellation). */
-function BankMock() {
+/**
+ * /bank — a faithful, large reproduction of the real Bank page: the page header
+ * ("The field of your thinking" / "The bank"), the field/list toggle, and the
+ * signature dot-FIELD plotted by the REAL <Constellation> over the REAL seeded
+ * thoughts. PRINT CONTINGENCY: the <canvas>-free constellation is SVG-ish DOM
+ * dots, but to be safe the meaning also lives in the header + the static list of
+ * a few real thoughts below, so the printed PDF reads even if dots don't paint.
+ */
+function BankSurface() {
+  // a few of the brightest real thoughts, as a static legend the print path can
+  // always read (the field above is the living version).
+  const legend = BANK_STARS.slice(0, 4);
   return (
-    <SurfaceFrame label="socrates · /bank" className="h-full">
-      <div className="flex h-full flex-col gap-3 overflow-hidden">
-        <p className="text-[0.9375rem] leading-relaxed text-pretty text-marble">
-          Every thought you work out, plotted in your own words — not the
-          model&rsquo;s answers.
+    <div className="mx-auto flex h-full max-w-4xl flex-col overflow-hidden">
+      <header className="shrink-0">
+        <p className="label-mono mb-3">
+          <span className="text-accent">&rsaquo;</span> The field of your thinking
         </p>
-        {/* the living field — non-essential decoration; the count + sample below
-            carry the meaning when the canvas doesn't paint. ambient (no hover). */}
-        <div className="relative min-h-0 flex-1">
-          <Constellation
-            stars={BANK_STARS}
-            interactive={false}
-            framed={false}
-            igniteDuration={1.6}
-            className="absolute inset-0"
-          />
+        <h1 className="font-display text-3xl font-light tracking-tight text-marble sm:text-4xl">
+          The bank
+        </h1>
+      </header>
+
+      {/* the field/list toggle + the quiet "the field" readout (verbatim) */}
+      <div className="mt-6 flex shrink-0 flex-wrap items-center justify-between gap-4 border-t border-hairline pt-5">
+        <div className="inline-flex rounded-md border border-hairline p-0.5">
+          <span className="inline-flex items-center gap-1.5 rounded-sm bg-raised-2 px-3 py-1.5 font-mono-display text-xs uppercase tracking-[0.12em] text-accent-strong">
+            <Grid3x3 className="size-3.5" strokeWidth={1.6} aria-hidden />
+            field
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-sm px-3 py-1.5 font-mono-display text-xs uppercase tracking-[0.12em] text-marble-dim">
+            <List className="size-3.5" strokeWidth={1.6} aria-hidden />
+            list
+          </span>
         </div>
-        <p className="label-mono text-marble-dim">
-          142 THOUGHTS · IDEAS · QUESTIONS · DECISIONS · TENSIONS
-        </p>
+        <span className="label-mono text-marble-dim">the field</span>
       </div>
-    </SurfaceFrame>
+
+      {/* the living field — the REAL Constellation; ambient (no hover). */}
+      <div className="relative mt-6 min-h-0 flex-1 overflow-hidden rounded-md border border-hairline bg-raised">
+        <Constellation
+          stars={BANK_STARS}
+          interactive={false}
+          framed={false}
+          igniteDuration={1.6}
+          className="absolute inset-0"
+        />
+      </div>
+
+      {/* the real "select one to read it" hint (verbatim) + a tiny static legend
+          carrying meaning for the print path */}
+      <p className="mt-4 shrink-0 font-sans text-sm text-marble-dim">
+        Each dot is a thought; the ones you keep returning to plot brighter and
+        larger. Select one to read it.
+      </p>
+      <ul className="mt-3 hidden shrink-0 gap-x-6 gap-y-1 sm:grid sm:grid-cols-2 print:grid">
+        {legend.map((s) => (
+          <li
+            key={s.id}
+            className="label-mono flex items-baseline gap-1.5 truncate text-marble-dim"
+          >
+            <span aria-hidden className="text-accent">
+              {TYPE_GLYPH[s.type as EntryType]}
+            </span>
+            <span className="truncate">{s.content}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
-/** /recap — the weekly letter excerpt, in Socrates' reflective voice. */
-function RecapMock() {
+/** A small "screen" frame for the secondary /calls peek on slide 9 — a hairline
+ *  card with a window-dots header and a mono label. (The primary product slides
+ *  5/6/7 use the richer <AppFrame> instead.) */
+function SurfaceFrame({
+  label,
+  className = "",
+  children,
+}: {
+  label: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <SurfaceFrame label="socrates · /recap" className="h-full">
-      <div className="flex h-full flex-col overflow-hidden">
-        <p className="label-mono mb-3 text-marble-dim">
-          FIG.01 — June 18 – June 24
-        </p>
-        <article className="space-y-3 border-l border-hairline pl-5 text-[0.9375rem] leading-relaxed text-pretty text-marble">
-          <p>
-            For a month you&rsquo;ve been circling the same fear without naming
-            it, and this week it finally held still long enough for you to say
-            it. AI agency, you decided, was never about whether the machine can
-            act for you. It&rsquo;s a smaller, harder question:{" "}
-            <em className="italic">
-              do you still think — or have you handed it over and kept the
-              feeling of having thought?
-            </em>
-          </p>
-          <p className="text-marble-dim">
-            I won&rsquo;t tell you whether you can build a thing that&rsquo;s
-            willing to be less satisfying than the tool that just answers.
-            That&rsquo;s the open question, and it&rsquo;s yours to live, not
-            mine to close. A midwife, not an oracle.
-          </p>
-        </article>
+    <div
+      className={`flex flex-col overflow-hidden rounded-md border border-hairline bg-raised/50 ${className}`}
+    >
+      <div className="flex items-center gap-2 border-b border-hairline px-4 py-2.5">
+        <span className="flex gap-1.5" aria-hidden>
+          <span className="size-2 rounded-full bg-marble-dim/30" />
+          <span className="size-2 rounded-full bg-marble-dim/30" />
+          <span className="size-2 rounded-full bg-marble-dim/30" />
+        </span>
+        <span className="label-mono ml-1 text-marble-dim">{label}</span>
       </div>
-    </SurfaceFrame>
+      <div className="min-h-0 flex-1 overflow-hidden p-5">{children}</div>
+    </div>
   );
 }
 
@@ -320,220 +379,206 @@ function SlideTitle() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SLIDE 2 — ORIGIN
+// SLIDE 2 — ORIGIN — word-light; the case-competition story is SPOKEN.
 // ─────────────────────────────────────────────────────────────────────────────
 function SlideOrigin() {
   return (
     <div className="max-w-4xl">
-      <Fig>FIG.01 · WHERE THIS STARTED</Fig>
+      <Fig>FIG.01</Fig>
       <Display>
-        I watched sharp students defend theses they never actually thought.
+        Sharp students defended theses{" "}
+        <span className="text-accent">they never thought through.</span>
       </Display>
-      <Support>
-        Judging a case competition — AI-written numbers and arguments, defended
-        on reflex. They didn&rsquo;t care to mean what they said.
-      </Support>
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SLIDE 3 — PROBLEM
+// SLIDE 3 — PROBLEM · A.3 — word-light; the framing is SPOKEN.
 // ─────────────────────────────────────────────────────────────────────────────
 function SlideProblem() {
   return (
     <div className="max-w-4xl">
-      <Fig>FIG.02 · THE PROBLEM · THEME A.3</Fig>
+      <Fig>FIG.02 · THEME A.3</Fig>
       <Display>
-        Agency isn&rsquo;t an override button. It&rsquo;s whether you still
-        think.
+        Agency isn&rsquo;t an override button.{" "}
+        <span className="text-accent">It&rsquo;s whether you still think.</span>
       </Display>
-      <Support>
-        You can&rsquo;t understand, override, or shape what you&rsquo;ve stopped
-        thinking about.
-      </Support>
-
-      {/* small visual: three faded faculties collapse into one accent THINK */}
-      <div className="mt-12 flex flex-wrap items-center gap-x-4 gap-y-3">
-        <span className="font-display text-sm tracking-wide text-marble-dim/70">
-          understand
-        </span>
-        <span className="text-marble-dim/40">·</span>
-        <span className="font-display text-sm tracking-wide text-marble-dim/70">
-          override
-        </span>
-        <span className="text-marble-dim/40">·</span>
-        <span className="font-display text-sm tracking-wide text-marble-dim/70">
-          shape
-        </span>
-        <ArrowRight
-          className="mx-2 size-4 text-marble-dim"
-          strokeWidth={1.6}
-          aria-hidden
-        />
-        <span className="font-display text-base font-medium tracking-[0.18em] text-accent uppercase">
-          think
-        </span>
-      </div>
-
       <p className="label-mono mt-12 border-t border-hairline pt-6 text-marble-dim">
-        EVIDENCE: BRAINONLLM.COM — COGNITIVE OFFLOADING IS MEASURABLE.
+        BRAINONLLM.COM — COGNITIVE OFFLOADING IS MEASURABLE
       </p>
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SLIDE 4 — REFRAME
+// SLIDE 4 — STANCE — word-light; a midwife, with a tight inline list.
 // ─────────────────────────────────────────────────────────────────────────────
+const STANCE = [
+  "Asks before it answers",
+  "Presses",
+  "Never flatters",
+  "Keeps the record",
+];
+
 function SlideReframe() {
   return (
     <div className="max-w-4xl">
-      <Fig>FIG.03 · THE REFRAME</Fig>
+      <Fig>FIG.03</Fig>
       <Display>
-        So don&rsquo;t build another oracle.{" "}
-        <span className="text-accent">Build a midwife.</span>
+        Not an oracle.{" "}
+        <span className="text-accent">A midwife for your thinking.</span>
       </Display>
-      <Support>
-        Restore agency upstream — by making people think more, not less.
-      </Support>
+      <ul className="mt-10 flex flex-wrap items-center gap-x-3 gap-y-3">
+        {STANCE.map((s, i) => (
+          <li key={s} className="flex items-center gap-3">
+            {i > 0 ? (
+              <span aria-hidden className="text-marble-dim/40">
+                &middot;
+              </span>
+            ) : null}
+            <span className="label-mono text-marble">{s}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SLIDE 5 — WHAT IT IS (+ a small surface peek: /today)
+// SLIDE 5 — TODAY (product) — a faithful, LARGE /today inside an app frame.
+// Almost wordless: the greeting, the real "Today, distilled" markdown, and the
+// "Worth returning to" pattern do all the talking. The narration is spoken.
 // ─────────────────────────────────────────────────────────────────────────────
-const TENETS = [
-  "Asks before it answers",
-  "Never flatters",
-  "Keeps YOUR thinking",
-  "Resurfaces your patterns",
-  "No metrics",
-];
-
 function SlideWhatItIs() {
   return (
-    <div className="grid w-full max-w-6xl grid-cols-1 items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
-      <div>
-        <Fig>FIG.04 · WHAT SOCRATES AI IS</Fig>
-        <Display>A thinking partner that refuses to think for you.</Display>
-
-        <div className="mt-9 grid grid-cols-1 gap-px overflow-hidden rounded-sm border border-hairline bg-hairline sm:grid-cols-2">
-          {TENETS.map((t, i) => (
-            <div key={t} className="flex flex-col gap-2 bg-ink px-5 py-4">
-              <span className="label-mono text-marble-dim/70">
-                {String(i + 1).padStart(2, "0")}
-              </span>
-              <span className="text-[0.9375rem] leading-snug text-marble">
-                {t}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        <p className="label-mono mt-6 text-marble-dim">&rsaquo; VOICE + TEXT</p>
-      </div>
-
-      {/* a small, faithful peek at the real product surface */}
-      <div className="hidden h-[26rem] lg:block">
-        <TodayMock />
-      </div>
+    <div className="h-[78vh] max-h-[44rem] w-full max-w-6xl">
+      <AppFrame active="Today">
+        <TodaySurface />
+      </AppFrame>
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SLIDE 6 — DEMO · THE RECORD — TodayMock + BankMock (constellation) + recap
+// SLIDE 6 — BANK (product) — a faithful, LARGE /bank inside an app frame: the
+// signature dot-field (the REAL <Constellation> over the REAL thoughts) is the
+// shape of your own mind over time. Word-light; the narration is spoken.
 // ─────────────────────────────────────────────────────────────────────────────
 function SlideRecord() {
   return (
-    <div className="w-full max-w-6xl">
-      <Fig>FIG.05 · YOUR COGNITION, KEPT</Fig>
-      <Display className="max-w-3xl">
-        Everything you work out becomes yours to return to.
-      </Display>
-
-      <div className="mt-9 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="h-[20rem]">
-          <BankMock />
-        </div>
-        <div className="h-[20rem]">
-          <RecapMock />
-        </div>
-        <div className="h-[20rem]">
-          <CallMock />
-        </div>
-      </div>
-
-      <p className="label-mono mt-6 text-marble-dim">
-        &rsaquo; THE BANK · THE WEEKLY RECAP · EVERY CALL, KEPT
-      </p>
+    <div className="h-[78vh] max-h-[44rem] w-full max-w-6xl">
+      <AppFrame active="The bank">
+        <BankSurface />
+      </AppFrame>
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SLIDE 7 — DEMO · THE DIALOGUE (static styled transcript + the voice orb)
+// SLIDE 7 — CHAT (product) — a faithful, LARGE /chat exchange inside an app
+// frame, in the REAL bubble grammar: the user's turn is a right-aligned boxed
+// bubble; Socrates' turn is left-aligned PLAIN text under a StarMark + "Socrates"
+// label (no bubble) — exactly chat-client.tsx. The exchange names the hidden
+// assumption and HANDS THE THREAD BACK instead of resolving. Verbatim from the
+// seeded s13 thread. All static DOM — it prints.
 // ─────────────────────────────────────────────────────────────────────────────
-function Bubble({
-  who,
+function ChatTurn({
+  role,
   children,
 }: {
-  who: "you" | "socrates";
+  role: "user" | "socrates";
   children: React.ReactNode;
 }) {
-  const mine = who === "you";
+  if (role === "user") {
+    return (
+      <div className="flex flex-col items-end">
+        <p className="label-mono mb-1.5 text-marble-dim">You</p>
+        <p className="text-pretty max-w-[85%] whitespace-pre-wrap rounded-md rounded-tr-sm border border-hairline bg-raised px-4 py-2.5 text-left font-sans text-[1.0625rem] leading-relaxed text-marble">
+          {children}
+        </p>
+      </div>
+    );
+  }
   return (
-    <div className={`flex flex-col ${mine ? "items-end" : "items-start"}`}>
-      <p className="label-mono mb-1.5 text-marble-dim">
-        {mine ? "YOU" : "SOCRATES"}
+    <div className="flex flex-col items-start pl-1">
+      <p className="label-mono mb-1.5 flex items-center gap-1.5 text-marble-dim">
+        <StarMark size={9} />
+        Socrates
       </p>
-      <div
-        className={`max-w-[34rem] rounded-md px-4 py-3 text-[0.9375rem] leading-relaxed text-pretty ${
-          mine
-            ? "border border-hairline-strong bg-raised/50 text-marble"
-            : "border border-accent/40 bg-accent/[0.06] text-marble"
-        }`}
-      >
+      <p className="text-pretty max-w-[88%] whitespace-pre-wrap font-sans text-[1.0625rem] leading-relaxed text-marble">
         {children}
+      </p>
+    </div>
+  );
+}
+
+function ChatSurface() {
+  return (
+    <div className="mx-auto flex h-full max-w-3xl flex-col overflow-hidden">
+      {/* the real chat header */}
+      <header className="mb-5 shrink-0 border-b border-hairline pb-4">
+        <p className="label-mono mb-2">
+          <span className="text-accent">&rsaquo;</span> chat
+        </p>
+        <h1 className="font-display text-xl font-light tracking-tight text-marble sm:text-2xl">
+          Think it through in writing.
+        </h1>
+      </header>
+
+      {/* transcript — it names the hidden assumption and hands the thread back */}
+      <div className="flex min-h-0 flex-1 flex-col justify-end gap-7 overflow-hidden">
+        <ChatTurn role="user">
+          A calculator made us faster but we can still reason about quantity.
+          This feels different — like outsourcing the reasoning itself, not the
+          arithmetic.
+        </ChatTurn>
+        <ChatTurn role="socrates">
+          Test that. The calculator outsourced a step you&rsquo;d already
+          mastered — you learned long division first, then handed it off. What if
+          the order reverses, and someone outsources the reasoning BEFORE they
+          ever built it? Is that the same trade, or a different one?
+        </ChatTurn>
+        <ChatTurn role="user">
+          Different. You can&rsquo;t outsource a muscle you never grew.
+          Augmentation needs a base to augment.
+        </ChatTurn>
+        <ChatTurn role="socrates">
+          Then you&rsquo;ve found your own dividing line, and it&rsquo;s sharper
+          than &ldquo;AI good / AI bad.&rdquo; Which side of your own line does
+          Socrates have to stay on?
+        </ChatTurn>
+      </div>
+
+      {/* the real composer — inert chrome, with the terminal caret */}
+      <div className="mt-3 shrink-0 border-t border-hairline pt-3">
+        <div className="flex items-end gap-3">
+          <div className="flex flex-1 items-start gap-2 rounded-md border border-hairline bg-raised px-3">
+            <span
+              aria-hidden
+              className="select-none pt-3 font-mono-display text-base leading-none text-marble-dim"
+            >
+              &rsaquo;
+            </span>
+            <span className="min-h-[2.75rem] flex-1 py-3 font-sans text-base text-marble-dim">
+              What&rsquo;s on your mind?
+            </span>
+          </div>
+          <span className="inline-flex aspect-square h-[2.75rem] items-center justify-center rounded-md bg-accent-btn">
+            <ArrowUp className="size-5 text-white" strokeWidth={1.8} aria-hidden />
+          </span>
+        </div>
       </div>
     </div>
   );
 }
 
-function SlideDialogue({ active }: SlideProps) {
+function SlideDialogue() {
   return (
-    <div className="grid w-full max-w-6xl grid-cols-1 items-center gap-10 lg:grid-cols-[0.85fr_1.15fr]">
-      {/* the voice orb — Socrates' presence; non-essential decoration. The
-          meaning lives entirely in the transcript on the right. */}
-      <div className="flex flex-col items-center gap-5 text-center">
-        <BreathingStar state={active ? "speaking" : "idle"} size={150} />
-        <p className="label-mono text-marble-dim">&rsaquo; VOICE · SAME SOCRATES</p>
-      </div>
-
-      <div>
-        <Fig>FIG.06 · IT PRESSES, IT DOESN&rsquo;T RESOLVE</Fig>
-
-        <div className="flex flex-col gap-4">
-          <Bubble who="you">
-            I should just generate the reflection essay like everyone else. The
-            grade&rsquo;s the same either way.
-          </Bubble>
-          <Bubble who="socrates">
-            So what exactly did they skip that you wish they hadn&rsquo;t?
-          </Bubble>
-          <Bubble who="you">
-            The part where you find out what you actually think by writing it.
-            The output looks fine. That&rsquo;s what scares me.
-          </Bubble>
-          <Bubble who="socrates">
-            Hold onto that line — &ldquo;there&rsquo;s no error message when you
-            stop thinking.&rdquo; Is something lost, or are you just nostalgic
-            for your own way of doing it?
-          </Bubble>
-        </div>
-      </div>
+    <div className="h-[78vh] max-h-[44rem] w-full max-w-6xl">
+      <AppFrame active="Chat">
+        <ChatSurface />
+      </AppFrame>
     </div>
   );
 }
