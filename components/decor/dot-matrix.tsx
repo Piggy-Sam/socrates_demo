@@ -1,7 +1,21 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { chaos, mix, rgba, smooth, readRGBVar, type RGB } from "@/lib/dots";
+import {
+  chaos,
+  mix,
+  mixInto,
+  smooth,
+  sampleJolts,
+  readRGBVar,
+  fillBucket,
+  fillStyleForBucket,
+  type RGB,
+} from "@/lib/dots";
+
+// Render at ~45fps even on 120Hz ProMotion — motion is time-parameterized, so
+// dropping the cadence is invisible but halves the canvas cost on those panels.
+const FRAME_MS = 22;
 
 type Props = {
   className?: string;
@@ -24,12 +38,23 @@ export function DotMatrix({ className = "", spacing = 30, intensity = 1 }: Props
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const reduceMq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let reduce = reduceMq.matches;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     let S = spacing;
     let w = 0, h = 0, cols = 0, rows = 0, raf = 0;
+    let lastDraw = 0; // frame-budget gate (ProMotion guard)
+    let onScreen = true; // IntersectionObserver gate
     const start = performance.now();
     const ptr = { x: -9999, y: -9999, tx: -9999, ty: -9999, active: false };
+    // Per-frame fill batching: each colour+alpha bucket collects [x,y,r,…] so we
+    // assign fillStyle once per bucket (not per dot) and allocate no strings.
+    // Arrays are reused across frames (length reset to 0, backing store kept).
+    const buckets = new Map<number, number[]>();
+    const col: RGB = [0, 0, 0]; // scratch for mixInto — no per-dot allocation
+    // jolts arrive in viewport coords; cache the canvas's viewport offset so we
+    // can map each local dot back to viewport space when sampling them.
+    const off = { x: 0, y: 0 };
     let accent: RGB = [15, 98, 254];
     let lit: RGB = [120, 170, 255];
     const readColors = () => {
@@ -43,15 +68,26 @@ export function DotMatrix({ className = "", spacing = 30, intensity = 1 }: Props
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       S = w < 700 ? 14 : 19; // dense, especially on mobile
       cols = Math.ceil(w / S) + 1; rows = Math.ceil(h / S) + 1;
+      const rect = canvas.getBoundingClientRect();
+      off.x = rect.left; off.y = rect.top;
       if (reduce) draw(0);
     };
 
     const GR = 240; // larger, gentler glow
     const draw = (now: number) => {
+      if (!reduce) raf = requestAnimationFrame(draw);
+      // frame-budget gate: keep requesting frames (so cursor easing stays live)
+      // but only re-render once ~22ms have passed. Motion is time-based, so the
+      // capped cadence is pixel-equivalent to running uncapped.
+      if (!reduce && now - lastDraw < FRAME_MS) return;
+      lastDraw = now;
+
       const t = (now - start) / 1000;
+      const wall = now / 1000; // wall-clock secs — jolt timestamps live here
       ptr.x += (ptr.tx - ptr.x) * 0.12;
       ptr.y += (ptr.ty - ptr.y) * 0.12;
       ctx.clearRect(0, 0, w, h);
+      for (const arr of buckets.values()) arr.length = 0; // reuse, no realloc
       for (let j = 0; j < rows; j++) {
         for (let i = 0; i < cols; i++) {
           const x = i * S, y = j * S;
@@ -69,15 +105,41 @@ export function DotMatrix({ className = "", spacing = 30, intensity = 1 }: Props
               colorK = Math.min(1, colorK + fe * 0.55);
             }
           }
+          // injected impulse (CTA jolt etc.) — an expanding ring of energy that
+          // only adds size/opacity/colour, never moves a dot. Reduced-motion
+          // already gates emitJolt at the source, so this is dormant there.
+          if (!reduce) {
+            const jolt = sampleJolts(x + off.x, y + off.y, wall);
+            if (jolt > 0) {
+              // a MASSIVE swell: dots clearly enlarge, brighten, and shift to the
+              // accent as the wavefront passes — but keep the per-dot entropy (e)
+              // so the wave reads organic, not a clean CGI hoop.
+              const ent = 0.55 + 0.9 * e;
+              radius += jolt * 4.6 * ent;
+              alpha += jolt * 0.7 * ent;
+              colorK = Math.min(1, colorK + jolt * 0.85);
+            }
+          }
           const fa = Math.min(0.85, alpha) * intensity;
           if (fa < 0.02) continue; // cull invisible dots
-          ctx.beginPath();
-          ctx.arc(x, y, radius, 0, 6.2832);
-          ctx.fillStyle = rgba(mix(accent, lit, colorK), fa);
-          ctx.fill();
+          mixInto(col, accent, lit, colorK);
+          const key = fillBucket(col[0], col[1], col[2], fa);
+          let arr = buckets.get(key);
+          if (!arr) { arr = []; buckets.set(key, arr); }
+          arr.push(x, y, radius);
         }
       }
-      if (!reduce) raf = requestAnimationFrame(draw);
+      // one fillStyle assignment + one fill() per colour bucket
+      for (const [key, arr] of buckets) {
+        if (arr.length === 0) continue;
+        ctx.fillStyle = fillStyleForBucket(key);
+        ctx.beginPath();
+        for (let k = 0; k < arr.length; k += 3) {
+          ctx.moveTo(arr[k] + arr[k + 2], arr[k + 1]);
+          ctx.arc(arr[k], arr[k + 1], arr[k + 2], 0, 6.2832);
+        }
+        ctx.fill();
+      }
     };
 
     const onMove = (e: PointerEvent) => {
@@ -97,17 +159,19 @@ export function DotMatrix({ className = "", spacing = 30, intensity = 1 }: Props
       if (e.pointerType !== "mouse") ptr.active = false;
     };
 
-    // pause the RAF loop while the tab is hidden (saves CPU/battery); resume
-    // seamlessly when visible. Reduced-motion stays static throughout.
-    const onVisibility = () => {
-      if (reduce) return;
-      if (document.hidden) {
+    // Run only when the tab is visible AND the canvas is actually on-screen.
+    // Scrolled-away or tab-hidden → the loop fully stops (no wasted frames on
+    // the app shell behind another view). Reduced-motion stays static.
+    const shouldRun = () => !reduce && !document.hidden && onScreen;
+    const sync = () => {
+      if (shouldRun()) {
+        if (!raf) { lastDraw = 0; raf = requestAnimationFrame(draw); }
+      } else if (raf) {
         cancelAnimationFrame(raf);
         raf = 0;
-      } else if (!raf) {
-        raf = requestAnimationFrame(draw);
       }
     };
+    const onVisibility = sync;
 
     readColors();
     resize();
@@ -115,20 +179,49 @@ export function DotMatrix({ className = "", spacing = 30, intensity = 1 }: Props
     ro.observe(canvas);
     const mo = new MutationObserver(readColors);
     mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    // pause the loop when the canvas scrolls fully out of view (e.g. the app
+    // shell behind another route) — combines with the tab-hidden check.
+    const io = new IntersectionObserver(
+      (entries) => {
+        onScreen = entries[entries.length - 1].intersectionRatio > 0;
+        if (!reduce) sync();
+      },
+      { threshold: 0 },
+    );
+    io.observe(canvas);
+    // Listeners are registered unconditionally: under reduced motion the loop
+    // never runs (shouldRun() short-circuits on `reduce`), so they sit inert —
+    // but they're already live the moment the OS preference flips back off.
+    window.addEventListener("pointermove", onMove, { passive: true });
+    window.addEventListener("pointerdown", onMove, { passive: true });
+    window.addEventListener("pointerup", onUp, { passive: true });
+    window.addEventListener("pointercancel", onUp, { passive: true });
+    window.addEventListener("pointerleave", onLeave);
+    document.addEventListener("visibilitychange", onVisibility);
+
+    // Live reduced-motion toggle: the preference can flip while the page is open.
+    // On change we re-evaluate WITHOUT a remount — park the RAF + paint one
+    // static frame, or resume the loop.
+    const onReduceChange = (e: MediaQueryListEvent) => {
+      reduce = e.matches;
+      if (reduce) {
+        if (raf) { cancelAnimationFrame(raf); raf = 0; }
+        draw(0);
+      } else {
+        sync();
+      }
+    };
+    reduceMq.addEventListener("change", onReduceChange);
+
     if (reduce) {
       draw(0);
     } else {
-      window.addEventListener("pointermove", onMove, { passive: true });
-      window.addEventListener("pointerdown", onMove, { passive: true });
-      window.addEventListener("pointerup", onUp, { passive: true });
-      window.addEventListener("pointercancel", onUp, { passive: true });
-      window.addEventListener("pointerleave", onLeave);
-      document.addEventListener("visibilitychange", onVisibility);
-      if (!document.hidden) raf = requestAnimationFrame(draw);
+      sync();
     }
     return () => {
       cancelAnimationFrame(raf);
-      ro.disconnect(); mo.disconnect();
+      ro.disconnect(); mo.disconnect(); io.disconnect();
+      reduceMq.removeEventListener("change", onReduceChange);
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerdown", onMove);
       window.removeEventListener("pointerup", onUp);

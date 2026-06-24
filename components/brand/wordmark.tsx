@@ -69,7 +69,7 @@ export function Wordmark({
   const inner = (
     <span className={`inline-flex items-center ${GAP[size]} ${className}`}>
       {withStar && (
-        <BustMark size={MARK[size]} className="shrink-0 text-marble" />
+        <BustMark size={MARK[size]} className="bust-mark shrink-0 text-marble" />
       )}
       <span
         className={`inline-flex items-center font-mono-display font-medium uppercase tracking-[0.18em] text-marble ${TEXT[size]}`}
@@ -85,7 +85,7 @@ export function Wordmark({
     <Link
       href={href}
       aria-label="Socrates AI — home"
-      className="inline-flex rounded-sm outline-none transition-opacity hover:opacity-80"
+      className="wordmark-link inline-flex rounded-sm outline-none"
     >
       {inner}
     </Link>

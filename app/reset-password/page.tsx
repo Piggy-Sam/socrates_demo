@@ -163,7 +163,7 @@ export default function ResetPasswordPage() {
 
                 <Button
                   type="submit"
-                  variant="gold"
+                  variant="accent"
                   size="lg"
                   disabled={busy}
                   className="mt-5 w-full"

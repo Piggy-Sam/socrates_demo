@@ -9,7 +9,7 @@
 // SURFACE the person's thoughts in their own words, never interpret, never
 // flatter, never grade. The summary is a quiet mirror, not a report card.
 
-import { sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { entries, summaries, themes } from "@/lib/db/schema";
 import type { EntryType } from "@/lib/constellation";
@@ -176,12 +176,24 @@ type ExtractAndStoreParams = {
   periodEnd?: Date;
   /** Stored on the summary row for provenance. */
   sourceSessionIds?: string[];
+  /**
+   * Idempotent re-extraction of a still-growing session (text chat fires this
+   * after every turn). When true, the persist step FIRST undoes the prior run's
+   * additive theme bump, deletes this session's existing entries, and drops its
+   * single-session daily summary — then re-inserts a fresh, complete distillation
+   * — all inside ONE transaction guarded by a per-session advisory lock, so two
+   * fast runs serialize instead of interleaving (no double-decrement, no dupes).
+   * The webhook (write-once, conversation_id-deduped) leaves this false.
+   */
+  replaceForSession?: boolean;
 };
 
 /**
- * Full pipeline: distill -> embed -> insert entries -> upsert themes -> store the
- * daily summary. Every stage is wrapped so a late failure never loses earlier
- * work; the caller (the webhook) can still ack 200. Scoped to one user.
+ * Full pipeline: distill -> embed -> persist (entries + themes + daily summary).
+ * The model call and embedding run OUTSIDE any transaction (they're slow and must
+ * not hold a row lock open); the writes are committed atomically. With
+ * `replaceForSession`, the persist step also owns its own compensation so the
+ * undo lives next to the code it compensates. Scoped to one user.
  */
 export async function extractAndStore(
   params: ExtractAndStoreParams,
@@ -193,6 +205,7 @@ export async function extractAndStore(
     periodStart,
     periodEnd,
     sourceSessionIds,
+    replaceForSession = false,
   } = params;
 
   const transcriptText =
@@ -212,12 +225,82 @@ export async function extractAndStore(
     distillation,
   };
 
-  // ── entries (embed + insert) ──────────────────────────────────────────────
+  // Embed up front (slow, network-bound) so the transaction stays short. A
+  // failure here means we simply insert entries without vectors rather than
+  // losing the run.
+  let vectors: number[][] = [];
   if (distillation.entries.length > 0) {
     try {
-      const vectors = await embedMany(
-        distillation.entries.map((e) => e.content),
+      vectors = await embedMany(distillation.entries.map((e) => e.content));
+    } catch (err) {
+      console.error("[pipeline] embedding failed; inserting without vectors", err);
+    }
+  }
+
+  const end = periodEnd ?? new Date();
+  const start = periodStart ?? startOfDay(end);
+  const summary = distillation.summary.trim();
+  const summarySources = sourceSessionIds ?? [sessionId];
+
+  // The persist step — compensation (when replacing) + inserts — runs in ONE
+  // transaction. A per-session advisory xact lock (auto-released at commit/abort)
+  // serializes concurrent re-extractions of the same session so their
+  // delete-then-reinsert never interleaves.
+  await db.transaction(async (tx) => {
+    if (replaceForSession) {
+      // Serialize same-session runs. hashtextextended() folds the uuid text into
+      // the bigint key pg_advisory_xact_lock() wants.
+      await tx.execute(
+        sql`select pg_advisory_xact_lock(hashtextextended(${sessionId}, 0))`,
       );
+
+      // ── undo any prior extraction for THIS session ───────────────────────
+      // Decrement themes by exactly what this session's existing entries added
+      // (mirroring the +count upsert below), then drop those entries and the
+      // session's single-session daily summary, before re-inserting.
+      const prior = await tx
+        .select({ themes: entries.themes })
+        .from(entries)
+        .where(
+          and(eq(entries.userId, userId), eq(entries.sessionId, sessionId)),
+        );
+
+      if (prior.length > 0) {
+        const undo = new Map<string, number>();
+        for (const e of prior) {
+          for (const label of e.themes ?? []) {
+            undo.set(label, (undo.get(label) ?? 0) + 1);
+          }
+        }
+        for (const [label, count] of undo) {
+          await tx
+            .update(themes)
+            .set({
+              entryCount: sql`greatest(${themes.entryCount} - ${count}, 0)`,
+            })
+            .where(and(eq(themes.userId, userId), eq(themes.label, label)));
+        }
+        await tx
+          .delete(entries)
+          .where(
+            and(eq(entries.userId, userId), eq(entries.sessionId, sessionId)),
+          );
+      }
+
+      await tx
+        .delete(summaries)
+        .where(
+          and(
+            eq(summaries.userId, userId),
+            eq(summaries.kind, "daily"),
+            // single-session daily summary written for THIS session.
+            sql`${summaries.sourceSessionIds} = array[${sessionId}]::uuid[]`,
+          ),
+        );
+    }
+
+    // ── entries (insert) ──────────────────────────────────────────────────
+    if (distillation.entries.length > 0) {
       const rows = distillation.entries.map((e, i) => ({
         userId,
         sessionId,
@@ -226,28 +309,24 @@ export async function extractAndStore(
         embedding: vectors[i] ?? null,
         themes: e.themes.length ? e.themes : null,
       }));
-      const inserted = await db.insert(entries).values(rows).returning({
-        id: entries.id,
-      });
+      const inserted = await tx
+        .insert(entries)
+        .values(rows)
+        .returning({ id: entries.id });
       result.entriesInserted = inserted.length;
-    } catch (err) {
-      console.error("[pipeline] entry embed/insert failed", err);
     }
-  }
 
-  // ── themes (upsert label-keyed per user; bump count + last_seen) ───────────
-  if (result.entriesInserted > 0) {
-    const counts = new Map<string, number>();
-    for (const e of distillation.entries) {
-      for (const t of e.themes) {
-        counts.set(t, (counts.get(t) ?? 0) + 1);
+    // ── themes (upsert label-keyed per user; bump count + last_seen) ───────
+    if (result.entriesInserted > 0) {
+      const counts = new Map<string, number>();
+      for (const e of distillation.entries) {
+        for (const t of e.themes) {
+          counts.set(t, (counts.get(t) ?? 0) + 1);
+        }
       }
-    }
-    for (const [label, count] of counts) {
-      try {
-        // atomic upsert — relies on the unique index on (user_id, label); safe
-        // under concurrent webhook retries, and one round-trip instead of two.
-        await db
+      for (const [label, count] of counts) {
+        // atomic upsert — relies on the unique index on (user_id, label).
+        await tx
           .insert(themes)
           .values({ userId, label, entryCount: count })
           .onConflictDoUpdate({
@@ -258,33 +337,25 @@ export async function extractAndStore(
             },
           });
         result.themesTouched += 1;
-      } catch (err) {
-        console.error(`[pipeline] theme upsert failed for "${label}"`, err);
       }
     }
-  }
 
-  // ── daily summary ─────────────────────────────────────────────────────────
-  if (distillation.summary.trim()) {
-    try {
-      const end = periodEnd ?? new Date();
-      const start = periodStart ?? startOfDay(end);
-      const inserted = await db
+    // ── daily summary ─────────────────────────────────────────────────────
+    if (summary) {
+      const inserted = await tx
         .insert(summaries)
         .values({
           userId,
           kind: "daily",
           periodStart: start,
           periodEnd: end,
-          content: distillation.summary.trim(),
-          sourceSessionIds: sourceSessionIds ?? [sessionId],
+          content: summary,
+          sourceSessionIds: summarySources,
         })
         .returning({ id: summaries.id });
       result.summaryId = inserted[0]?.id ?? null;
-    } catch (err) {
-      console.error("[pipeline] summary insert failed", err);
     }
-  }
+  });
 
   return result;
 }

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut } from "lucide-react";
+import { LogOut, SlidersHorizontal } from "lucide-react";
 import { Wordmark } from "@/components/brand/wordmark";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { LinkButton } from "@/components/ui/button";
@@ -40,7 +40,7 @@ export function AppNav({ displayName }: { displayName?: string | null }) {
                 key={l.href}
                 href={l.href}
                 aria-current={active ? "page" : undefined}
-                className={`label-mono rounded-sm px-2.5 py-1.5 transition-colors ${
+                className={`label-mono inline-flex min-h-10 items-center rounded-sm px-2.5 py-2 transition-colors ${
                   active
                     ? "text-accent"
                     : "text-marble-dim hover:text-marble"
@@ -62,6 +62,23 @@ export function AppNav({ displayName }: { displayName?: string | null }) {
             </LinkButton>
           )}
           <ThemeToggle />
+          {/* A quiet door to settings — onboarding doubles as it, pre-filling
+              from the saved profile. Not the accent; sits beside sign-out. */}
+          <Link
+            href="/onboarding"
+            aria-current={
+              pathname.startsWith("/onboarding") ? "page" : undefined
+            }
+            aria-label="Settings"
+            title="Settings"
+            className={`inline-flex size-9 items-center justify-center rounded-sm border border-hairline transition-colors hover:border-hairline-strong hover:text-marble ${
+              pathname.startsWith("/onboarding")
+                ? "text-accent"
+                : "text-marble-dim"
+            }`}
+          >
+            <SlidersHorizontal className="size-4" strokeWidth={1.6} />
+          </Link>
           <button
             type="button"
             onClick={signOut}

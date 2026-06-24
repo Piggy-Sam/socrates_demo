@@ -32,28 +32,45 @@ export function extractBearer(header: string | null): string | null {
   return m ? m[1].trim() : null;
 }
 
+// SECURITY — ELEVENLABS_LLM_SECRET is a TOP-TIER secret: it is THE trust boundary
+// for the voice brain. Whoever presents it (URL-path or bearer) is treated as a
+// trusted voice caller and may bind a turn to the user_id in the body, reading
+// that user's private bank context. A leak therefore allows impersonation of ANY
+// user — rotate immediately on any suspicion. The narrowing below is pure
+// defense-in-depth BEHIND that boundary; it does not replace it.
+
+// Pre-compiled UUID shape check (RFC 4122-ish; accepts our Supabase user ids).
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
- * Liberally dig a user_id out of an ElevenLabs Custom-LLM request body. The
- * agent threads it in via dynamic variables, and the exact nesting varies by
- * configuration, so we check every place it could plausibly land.
+ * Resolve the user_id from an ElevenLabs Custom-LLM request body — and ONLY from
+ * the canonical, SERVER-SET locations our agent + initiation data actually thread
+ * the id through. The webhook's resolveUserId mirrors this discipline.
+ *
+ * We deliberately do NOT consult generic top-level guesses (body.user_id,
+ * body.user, metadata.user_id): those are not part of ElevenLabs' dynamic-variable
+ * contract and would only widen the surface for a crafted request (already inside
+ * the secret boundary) to bind a turn to someone else's bank. As an extra cheap
+ * reject, a candidate must look like a well-formed uuid or we fall through —
+ * yielding the RAG-less, no-user_id path rather than honoring a malformed id.
  */
 export function extractUserId(
   body: ChatCompletionRequest,
 ): string | null {
+  const init = record(body.conversation_initiation_client_data);
   const candidates: unknown[] = [
-    body.user_id,
-    body.user,
+    init?.user_id,
+    record(init?.dynamic_variables)?.user_id,
+    record(body.dynamic_variables)?.user_id,
     record(body.elevenlabs_extra_body)?.user_id,
     record(body.elevenlabs_extra_body)?.user,
-    record(body.conversation_initiation_client_data)?.user_id,
-    record(
-      record(body.conversation_initiation_client_data)?.dynamic_variables,
-    )?.user_id,
-    record(body.dynamic_variables)?.user_id,
-    record(body.metadata)?.user_id,
   ];
   for (const c of candidates) {
-    if (typeof c === "string" && c.trim()) return c.trim();
+    if (typeof c === "string") {
+      const v = c.trim();
+      if (v && UUID_RE.test(v)) return v;
+    }
   }
   return null;
 }

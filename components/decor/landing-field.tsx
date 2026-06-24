@@ -2,7 +2,21 @@
 
 import { useEffect, useRef } from "react";
 import { BUST_FACE } from "@/components/brand/bust-dots";
-import { chaos, mix, rgba, smooth, readRGBVar, type RGB } from "@/lib/dots";
+import {
+  chaos,
+  mix,
+  mixInto,
+  smooth,
+  sampleJolts,
+  readRGBVar,
+  fillBucket,
+  fillStyleForBucket,
+  type RGB,
+} from "@/lib/dots";
+
+// Render at ~45fps even on 120Hz ProMotion — motion is time-parameterized, so
+// dropping the cadence is invisible but halves the canvas cost on those panels.
+const FRAME_MS = 22;
 
 type Props = {
   /** id of the element marking where the face emerges (the hero's left cell) */
@@ -28,13 +42,26 @@ export function LandingField({ faceId, className = "", spacing = 22 }: Props) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const reduceMq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let reduce = reduceMq.matches;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     let S = spacing;
     let w = 0, h = 0, cols = 0, rows = 0, raf = 0;
+    let lastDraw = 0; // frame-budget gate (ProMotion guard)
+    let onScreen = true; // IntersectionObserver gate
     const start = performance.now();
 
     const ptr = { x: -9999, y: -9999, tx: -9999, ty: -9999, active: false };
+    // Per-frame fill batching: colour+alpha bucket → [x,y,r,…]. One fillStyle
+    // assignment per bucket, no per-dot string allocation. Arrays are reused
+    // across frames (length reset, backing store kept). Scratch tuples for the
+    // in-place colour mixes that previously minted an RGB per dot.
+    const buckets = new Map<number, number[]>();
+    const cCol: RGB = [0, 0, 0]; // centerColor scratch
+    const col: RGB = [0, 0, 0]; // working colour scratch
+    // jolts arrive in viewport coords; cache the canvas's viewport offset so we
+    // can map each local dot back to viewport space when sampling them.
+    const off = { x: 0, y: 0 };
     let accent: RGB = [15, 98, 254];
     let marble: RGB = [11, 15, 26];
     const readColors = () => {
@@ -82,6 +109,8 @@ export function LandingField({ faceId, className = "", spacing = 22 }: Props) {
       // dense lattice, especially on mobile (higher face resolution)
       S = w < 700 ? 11 : 15;
       cols = Math.ceil(w / S) + 1; rows = Math.ceil(h / S) + 1;
+      const rect = canvas.getBoundingClientRect();
+      off.x = rect.left; off.y = rect.top;
       measure(); // canvas size changed → face position / maxD changed
     };
 
@@ -98,7 +127,15 @@ export function LandingField({ faceId, className = "", spacing = 22 }: Props) {
     const GR = 300; // cursor reach — a large, gentle glow
 
     const draw = (now: number) => {
+      if (!reduce) raf = requestAnimationFrame(draw);
+      // frame-budget gate: reschedule always (cursor easing + morph stay live)
+      // but only re-render once ~22ms have passed. Motion is time-based, so the
+      // capped cadence is pixel-equivalent to running uncapped.
+      if (!reduce && now - lastDraw < FRAME_MS) return;
+      lastDraw = now;
+
       const t = (now - start) / 1000;
+      const wall = now / 1000; // wall-clock secs — jolt timestamps live here
       stepMorph(t);
       ptr.x += (ptr.tx - ptr.x) * 0.12;
       ptr.y += (ptr.ty - ptr.y) * 0.12;
@@ -107,7 +144,10 @@ export function LandingField({ faceId, className = "", spacing = 22 }: Props) {
       const { has, fx, fy, fscale, rcx, rcy, orbR, maxD } = geom;
 
       ctx.clearRect(0, 0, w, h);
+      for (const arr of buckets.values()) arr.length = 0; // reuse, no realloc
       const lit = mix(accent, [255, 255, 255], 0.45);
+      // centerColor is identical for every dot this frame (depends only on m)
+      const centerColor = mixInto(cCol, marble, accent, m);
 
       for (let j = 0; j < rows; j++) {
         for (let i = 0; i < cols; i++) {
@@ -150,9 +190,9 @@ export function LandingField({ faceId, className = "", spacing = 22 }: Props) {
           let alpha = aAmb + centerVal * (0.92 - aAmb);
           alpha *= 0.78 + 0.28 * ce;
 
-          // colour: ambient faint accent → face marble → orb accent
-          const centerColor = mix(marble, accent, m);
-          let color = mix(accent, centerColor, centerVal);
+          // colour: ambient faint accent → face marble → orb accent (in-place
+          // into the per-dot scratch — no allocation)
+          const color = mixInto(col, accent, centerColor, centerVal);
 
           // cursor: brighten + ENLARGE nearby dots, non-uniform (entropy), no
           // halo — the glow lives in the dots themselves.
@@ -164,20 +204,46 @@ export function LandingField({ faceId, className = "", spacing = 22 }: Props) {
               const ent = 0.4 + 0.9 * ce;
               radius += fe * 1.7 * ent;
               alpha += fe * 0.3 * ent;
-              color = mix(color, lit, fe * 0.45);
+              mixInto(color, color, lit, fe * 0.45);
+            }
+          }
+
+          // injected impulse (CTA jolt etc.) — an expanding ring of energy that
+          // only adds size/opacity/colour, never moves a dot. emitJolt is gated
+          // on reduced-motion at the source, so this stays dormant there.
+          if (!reduce) {
+            const jolt = sampleJolts(X + off.x, Y + off.y, wall);
+            if (jolt > 0) {
+              // a MASSIVE swell sweeping the whole field: dots clearly enlarge,
+              // brighten, and shift to the accent — entropy (ce) preserved so the
+              // wave reads organic, not a clean CGI hoop.
+              const ent = 0.55 + 0.9 * ce;
+              radius += jolt * 4.6 * ent;
+              alpha += jolt * 0.7 * ent;
+              mixInto(color, color, lit, Math.min(1, jolt * 0.85));
             }
           }
 
           const fa = Math.min(1, alpha);
           if (fa < 0.018) continue; // cull invisible dots (keeps it fast)
-          ctx.beginPath();
-          ctx.arc(X, Y, Math.max(0.4, radius), 0, 6.2832);
-          ctx.fillStyle = rgba(color, fa);
-          ctx.fill();
+          const key = fillBucket(color[0], color[1], color[2], fa);
+          let arr = buckets.get(key);
+          if (!arr) { arr = []; buckets.set(key, arr); }
+          arr.push(X, Y, Math.max(0.4, radius));
         }
       }
 
-      if (!reduce) raf = requestAnimationFrame(draw);
+      // one fillStyle assignment + one fill() per colour bucket
+      for (const [key, arr] of buckets) {
+        if (arr.length === 0) continue;
+        ctx.fillStyle = fillStyleForBucket(key);
+        ctx.beginPath();
+        for (let k = 0; k < arr.length; k += 3) {
+          ctx.moveTo(arr[k] + arr[k + 2], arr[k + 1]);
+          ctx.arc(arr[k], arr[k + 1], arr[k + 2], 0, 6.2832);
+        }
+        ctx.fill();
+      }
     };
 
     const onMove = (e: PointerEvent) => {
@@ -192,18 +258,23 @@ export function LandingField({ faceId, className = "", spacing = 22 }: Props) {
       if (e.pointerType !== "mouse") ptr.active = false;
     };
 
-    // pause the RAF loop while the tab is hidden (saves CPU/battery); resume
-    // seamlessly when visible. Reduced-motion stays static throughout.
-    const onVisibility = () => {
-      if (reduce) return;
-      if (document.hidden) {
+    // Run only when the tab is visible AND the canvas is actually on-screen.
+    // Scrolled-away or tab-hidden → the loop fully stops. Reduced-motion stays
+    // static throughout.
+    const shouldRun = () => !reduce && !document.hidden && onScreen;
+    const sync = () => {
+      if (shouldRun()) {
+        if (!raf) {
+          measure(); // layout may have shifted while paused
+          lastDraw = 0;
+          raf = requestAnimationFrame(draw);
+        }
+      } else if (raf) {
         cancelAnimationFrame(raf);
         raf = 0;
-      } else if (!raf) {
-        measure(); // layout may have shifted while hidden
-        raf = requestAnimationFrame(draw);
       }
     };
+    const onVisibility = sync;
 
     readColors();
     resize();
@@ -216,6 +287,16 @@ export function LandingField({ faceId, className = "", spacing = 22 }: Props) {
     if (faceEl) faceRo.observe(faceEl);
     const mo = new MutationObserver(readColors);
     mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    // pause the loop when the canvas scrolls fully out of view — combines with
+    // the tab-hidden check so a backgrounded /about stops all its loops.
+    const io = new IntersectionObserver(
+      (entries) => {
+        onScreen = entries[entries.length - 1].intersectionRatio > 0;
+        sync();
+      },
+      { threshold: 0 },
+    );
+    io.observe(canvas);
     window.addEventListener("pointermove", onMove, { passive: true });
     window.addEventListener("pointerdown", onMove, { passive: true });
     window.addEventListener("pointerup", onUp, { passive: true });
@@ -225,11 +306,31 @@ export function LandingField({ faceId, className = "", spacing = 22 }: Props) {
     // viewport rect shifts on scroll — re-measure then (cheap, not per-frame).
     window.addEventListener("scroll", measure, { passive: true });
     document.addEventListener("visibilitychange", onVisibility);
-    if (!document.hidden) raf = requestAnimationFrame(draw);
+
+    // Live reduced-motion toggle: the OS preference can flip while the page is
+    // open. On change we re-evaluate WITHOUT a remount — park the RAF + paint
+    // one static frame, or resume the loop (re-measuring the face geometry).
+    const onReduceChange = (e: MediaQueryListEvent) => {
+      reduce = e.matches;
+      if (reduce) {
+        if (raf) { cancelAnimationFrame(raf); raf = 0; }
+        draw(0);
+      } else {
+        sync();
+      }
+    };
+    reduceMq.addEventListener("change", onReduceChange);
+
+    if (reduce) {
+      draw(0);
+    } else {
+      sync();
+    }
 
     return () => {
       cancelAnimationFrame(raf);
-      ro.disconnect(); faceRo.disconnect(); mo.disconnect();
+      ro.disconnect(); faceRo.disconnect(); mo.disconnect(); io.disconnect();
+      reduceMq.removeEventListener("change", onReduceChange);
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerdown", onMove);
       window.removeEventListener("pointerup", onUp);

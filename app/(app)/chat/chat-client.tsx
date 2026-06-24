@@ -9,6 +9,7 @@ import {
 } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ArrowUp } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { StarMark } from "@/components/brand/wordmark";
@@ -30,16 +31,29 @@ export function ChatClient({
   displayName,
   initialTurns = [],
   initialSessionId = null,
+  seed = null,
 }: {
   displayName: string | null;
   initialTurns?: Turn[];
   initialSessionId?: string | null;
+  // A server-resolved one-line callback prompt (from a banked thought or a call)
+  // that PREFILLS the composer — closing the think → bank → revisit loop. Never
+  // auto-sent; the user reads, edits, and presses send on their own thought.
+  seed?: string | null;
 }) {
   const router = useRouter();
   const [turns, setTurns] = useState<Turn[]>(initialTurns);
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft] = useState(seed ?? "");
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Once a completed exchange has been fed to the bank pipeline, show a single
+  // quiet invitation back to /bank. A resumed thread (initialTurns already on
+  // file) is, by definition, already collecting. Strictly singular + non-metric.
+  const [collecting, setCollecting] = useState(initialTurns.length > 0);
+  // The completed assistant turn, announced ONCE to screen readers when a stream
+  // finishes — so a reply reads as one statement, not a torrent of token
+  // fragments. The transcript container itself is NOT a live region.
+  const [announce, setAnnounce] = useState("");
   const reduce = useReducedMotion();
 
   const sessionIdRef = useRef<string | null>(initialSessionId);
@@ -47,8 +61,41 @@ export function ChatClient({
   const turnsRef = useRef<Turn[]>(turns);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const extractTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   turnsRef.current = turns;
+
+  // Bank extraction is a re-distill of the WHOLE conversation, so it only needs
+  // to run once the user pauses — not after every send. Debounce it onto a quiet
+  // period: each send reschedules, so a fast back-and-forth coalesces into a
+  // single extraction off the hot path. extractChatSession is idempotent +
+  // serialized server-side, so a late re-fire is always safe.
+  const scheduleExtraction = useCallback((sessionId: string) => {
+    if (extractTimerRef.current) clearTimeout(extractTimerRef.current);
+    extractTimerRef.current = setTimeout(() => {
+      extractTimerRef.current = null;
+      void extractChatSession(sessionId).catch((err) => {
+        console.error("[chat] bank extraction failed", err);
+      });
+    }, 4000);
+  }, []);
+
+  // Flush a pending extraction on unmount/navigation so a just-finished thread
+  // still reaches the bank even if the user leaves before the quiet period.
+  useEffect(() => {
+    return () => {
+      if (extractTimerRef.current) {
+        clearTimeout(extractTimerRef.current);
+        extractTimerRef.current = null;
+        const id = sessionIdRef.current;
+        if (id) {
+          void extractChatSession(id).catch((err) => {
+            console.error("[chat] bank extraction failed", err);
+          });
+        }
+      }
+    };
+  }, []);
 
   // Keep the latest exchange in view as tokens arrive.
   useLayoutEffect(() => {
@@ -164,6 +211,9 @@ export function ChatClient({
       }
     } finally {
       setStreaming(false);
+      // Hand the FINISHED reply to the live region exactly once. Screen readers
+      // get the whole turn as one announcement instead of streaming fragments.
+      if (assistantText) setAnnounce(assistantText);
     }
 
     // Persist the completed exchange (best-effort; never block the UI). We saved
@@ -175,11 +225,11 @@ export function ChatClient({
       const sessionId = await ensureSession();
       await persistTurn(sessionId, text, assistantText);
       // Feed this written conversation into the bank via the SAME pipeline voice
-      // uses (entries + themes + daily summary). Fire-and-forget — never block or
-      // break the chat UI; extractChatSession is idempotent across re-runs.
-      void extractChatSession(sessionId).catch((err) => {
-        console.error("[chat] bank extraction failed", err);
-      });
+      // uses (entries + themes + daily summary). Debounced onto a quiet period —
+      // off the hot path, never blocking the chat UI; extractChatSession is
+      // idempotent + serialized server-side, so re-fires are safe.
+      scheduleExtraction(sessionId);
+      setCollecting(true);
       if (isNewConversation) {
         // Promote this brand-new thread to its own resumable URL and surface it
         // in the sidebar. router.replace() moves the app to /chat/<id> (so the
@@ -192,7 +242,7 @@ export function ChatClient({
     } catch (err) {
       console.error("[chat] persist failed", err);
     }
-  }, [draft, streaming, ensureSession, router]);
+  }, [draft, streaming, ensureSession, router, scheduleExtraction]);
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -205,11 +255,28 @@ export function ChatClient({
 
   return (
     <div className="flex min-h-[60vh] flex-col">
+      {/* A completed Socrates reply is announced ONCE here, not streamed token
+          by token. The transcript below is therefore NOT a live region. */}
+      <p role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+        {announce}
+      </p>
+
+      {/* compact header — joins the family of page titles (one mono kicker with
+          the terminal caret, one marble title). Kept slim so it sits above the
+          transcript without competing with the empty-state greeting. */}
+      <header className="mb-5 border-b border-hairline pb-4">
+        <p className="label-mono mb-2">
+          <span className="text-accent">&rsaquo;</span> chat
+        </p>
+        <h1 className="font-display text-xl font-light tracking-tight text-marble sm:text-2xl">
+          Think it through in writing.
+        </h1>
+      </header>
+
       {/* transcript */}
       <div
         ref={scrollRef}
         className="flex-1 overflow-y-auto pb-6"
-        aria-live="polite"
         aria-busy={streaming}
       >
         {empty ? (
@@ -240,13 +307,27 @@ export function ChatClient({
         <p className="label-mono mb-3 text-marble-dim">{error}</p>
       )}
 
+      {/* a single quiet invitation back to the bank once this thread has begun
+          collecting there — closes the loop, stays non-metric (no count). */}
+      {collecting && !empty && (
+        <Link
+          href="/bank"
+          className="label-mono group mb-3 inline-flex items-center gap-1.5 self-start text-marble-dim transition-colors hover:text-accent"
+        >
+          this is collecting in your bank
+          <span aria-hidden className="transition-transform group-hover:translate-x-0.5">
+            &rarr;
+          </span>
+        </Link>
+      )}
+
       {/* composer */}
       <div className="sticky bottom-0 -mx-1 mt-2 border-t border-hairline bg-ink/80 px-1 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-3 backdrop-blur-sm">
         <div className="flex items-end gap-3">
           <div className="flex flex-1 items-start gap-2 rounded-md border border-hairline bg-raised px-3 transition-colors focus-within:border-accent">
             <span
               aria-hidden
-              className="select-none pt-3 font-mono-display text-base leading-none text-accent"
+              className="select-none pt-3 font-mono-display text-base leading-none text-marble-dim"
             >
               &rsaquo;
             </span>
@@ -263,7 +344,7 @@ export function ChatClient({
           </div>
           <Button
             type="button"
-            variant="gold"
+            variant="accent"
             size="lg"
             onClick={() => void send()}
             disabled={streaming || !draft.trim()}
@@ -308,7 +389,7 @@ function TurnBlock({
         </div>
       ) : (
         <div className="flex flex-col items-start">
-          <p className="label-mono mb-1.5 flex items-center gap-1.5 text-accent">
+          <p className="label-mono mb-1.5 flex items-center gap-1.5 text-marble-dim">
             <StarMark size={9} />
             Socrates
           </p>

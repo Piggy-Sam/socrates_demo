@@ -175,7 +175,7 @@ export default function DesignLab() {
                 <Button
                   key={s}
                   size="sm"
-                  variant={starState === s ? "gold" : "outline"}
+                  variant={starState === s ? "accent" : "outline"}
                   onClick={() => setStarState(s)}
                 >
                   {s}
@@ -233,10 +233,10 @@ export default function DesignLab() {
           <div>
             <p className="label-mono mb-4">Buttons · state</p>
             <div className="flex flex-wrap items-center gap-3 rounded-md border border-hairline bg-raised p-8">
-              <Button variant="gold">Begin</Button>
+              <Button variant="accent">Begin</Button>
               <Button variant="outline">Write it</Button>
               <Button variant="ghost">Later</Button>
-              <Button variant="gold" disabled>
+              <Button variant="accent" disabled>
                 Disabled
               </Button>
             </div>

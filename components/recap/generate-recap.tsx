@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useReducedMotion, motion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { renderRecap } from "./render-recap";
+import { RecapTakeaway } from "./recap-takeaway";
 
 /**
  * On-demand weekly recap. Calls POST /api/recap/generate and renders the
@@ -11,6 +13,7 @@ import { renderRecap } from "./render-recap";
  * when no weekly summary exists yet for the current week.
  */
 export function GenerateRecap() {
+  const router = useRouter();
   const reduce = useReducedMotion();
   const [state, setState] = useState<"idle" | "loading" | "done" | "error">(
     "idle",
@@ -35,6 +38,11 @@ export function GenerateRecap() {
       }
       setContent(data.content);
       setState("done");
+      // The recap is now persisted; re-fetch the server page so it re-renders
+      // with the canonical FIG date header (the real period) around the letter,
+      // matching how an already-existing recap is shown. The in-place article
+      // below covers the brief gap before the refresh resolves.
+      router.refresh();
     } catch {
       setError("Something interrupted that. Try again in a moment.");
       setState("error");
@@ -50,6 +58,7 @@ export function GenerateRecap() {
         className="border-l border-hairline pl-6 font-sans sm:pl-8"
       >
         {renderRecap(content)}
+        <RecapTakeaway content={content} />
       </motion.article>
     );
   }
@@ -57,7 +66,7 @@ export function GenerateRecap() {
   return (
     <div className="flex flex-col items-start gap-4">
       <Button
-        variant="gold"
+        variant="accent"
         size="md"
         onClick={generate}
         disabled={state === "loading"}

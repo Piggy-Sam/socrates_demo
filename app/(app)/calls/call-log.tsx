@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Phone, Mic, ChevronDown } from "lucide-react";
 import { renderRecap } from "@/components/recap/render-recap";
+import { PageHeader } from "@/components/ui/page-header";
 
 export type CallTurn = { role: "user" | "socrates"; text: string };
 export type CallEntry = { type: string; content: string; themes: string[] };
@@ -69,19 +71,12 @@ function uniqueThemes(entries: CallEntry[]): string[] {
 export function CallLog({ items }: { items: CallLogItem[] }) {
   return (
     <div className="mx-auto max-w-2xl">
-      <header className="mb-10 border-b border-hairline pb-6">
-        <p className="label-mono mb-3">
-          <span className="text-accent">&rsaquo;</span> Calls &amp; voice
-        </p>
-        <h1 className="text-balance font-display text-3xl font-medium tracking-tight text-marble sm:text-4xl">
-          Every call, kept.
-        </h1>
-        <p className="text-pretty mt-3 max-w-prose font-sans text-marble-dim">
-          What you talked through, surfaced and set down &mdash; a quiet summary,
-          the thoughts that came up in your own words, and the full transcript if
-          you want it. Never a score; just the record of your thinking.
-        </p>
-      </header>
+      <PageHeader
+        className="mb-10 border-b border-hairline pb-6"
+        kicker="Calls & voice"
+        title="Every call, kept."
+        intro="What you talked through, surfaced and set down — a quiet summary, the thoughts that came up in your own words, and the full transcript if you want it. Never a score; just the record of your thinking."
+      />
 
       {items.length === 0 ? (
         <section className="rounded-md border border-hairline bg-raised p-8 sm:p-10">
@@ -206,6 +201,26 @@ function CallCard({ call }: { call: CallLogItem }) {
           )}
         </div>
       )}
+
+      {/* close the loop — carry this call back into thinking. Seeded server-side
+          on /chat from this session's summary (never client text). Only offered
+          when there's something distilled to press on. */}
+      {call.summary ? (
+        <div className="mt-5 border-t border-hairline pt-4">
+          <Link
+            href={`/chat?fromCall=${encodeURIComponent(call.id)}`}
+            className="label-mono group inline-flex items-center gap-1.5 text-marble-dim transition-colors hover:text-accent"
+          >
+            Take this further in writing
+            <span
+              aria-hidden
+              className="transition-transform group-hover:translate-x-0.5"
+            >
+              &rarr;
+            </span>
+          </Link>
+        </div>
+      ) : null}
     </article>
   );
 }
