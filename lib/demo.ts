@@ -1,9 +1,10 @@
 // Transient "See demo" mode.
 //
 // A visitor who clicks "See demo" on the landing page gets a short-lived cookie
-// that makes the server resolve their identity to the DEMO account (Yancun's
-// seeded data) for READS — so anyone can explore every surface, fully populated,
-// with no sign-up. Every WRITE path checks isDemo and no-ops, so nothing a
+// that makes the server resolve their identity to the dedicated DEMO account's
+// curated data for READS — so anyone can explore every surface, fully populated,
+// with no sign-up. (This is a separate account from the owner's own, so the
+// owner's personal testing never affects what judges see.) Every WRITE path checks isDemo and no-ops, so nothing a
 // visitor does touches the real account. Clearing the cookie ("Exit demo", or it
 // simply expiring) returns them to the landing page; because nothing persisted,
 // a refresh shows the same pristine seeded state.
@@ -13,11 +14,10 @@
 
 export const DEMO_COOKIE = "socrates_demo";
 
-/** The account a demo session reads from — the seeded demo persona. */
+/** The dedicated account a demo session reads from — the curated demo persona,
+ *  provisioned via `npm run provision-demo` (demo.pitch@socrates-ai.app). */
 export const DEMO_USER_ID =
-  // NOTE: the operator replaces this with the new dedicated demo account UID
-  // after running `npm run provision-demo`.
-  process.env.DEMO_USER_ID || "c996ad01-7f17-4c11-8c1d-d65baf4249e3";
+  process.env.DEMO_USER_ID || "2c4b25ff-009e-4748-8e06-fe2f9436709b";
 
 /** How long a demo session lasts before it lapses back to the landing page. */
 export const DEMO_MAX_AGE_SECONDS = 60 * 60 * 8; // 8 hours

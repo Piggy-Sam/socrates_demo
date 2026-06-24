@@ -43,7 +43,7 @@ process.loadEnvFile?.(".env.local");
 const USER_ID =
   process.argv[2] ||
   process.env.DEMO_USER_ID ||
-  "c996ad01-7f17-4c11-8c1d-d65baf4249e3";
+  "2c4b25ff-009e-4748-8e06-fe2f9436709b"; // dedicated demo account (provision-demo)
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -1029,6 +1029,11 @@ async function main() {
 
     const transcript = S.type === "chat" ? null : JSON.stringify(S.turns);
 
+    // elevenlabs_conversation_id is GLOBALLY unique (webhook dedup), so namespace
+    // the seed ids per account — otherwise seeding a second account collides with
+    // the first account's "seed-01", etc.
+    const convId = S.convId ? `${USER_ID.slice(0, 8)}-${S.convId}` : null;
+
     const [row] = await sql`
       insert into sessions (user_id, type, started_at, ended_at, transcript, elevenlabs_conversation_id)
       values (
@@ -1037,7 +1042,7 @@ async function main() {
         ${startExpr},
         ${startExpr} + (${endMin} || ' minutes')::interval,
         ${transcript}::jsonb,
-        ${S.convId}
+        ${convId}
       )
       returning id`;
     sessionId[S.key] = row.id;
