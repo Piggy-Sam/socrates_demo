@@ -149,6 +149,11 @@ export function OnboardingForm({ defaults }: Props) {
     return [...set].sort();
   }, [timezone]);
 
+  // daily calls are opt-in: a clear toggle. When on, the time picker shows and
+  // is required; when off, the field is hidden and submit clears dailyCallTime
+  // to null. Default on only if a time was already saved.
+  const [callDaily, setCallDaily] = useState(Boolean(defaults.dailyCallTime));
+
   // a live confirmation that the chosen zone is the user's actual day — derived
   // in render (no state) so it stays lint-clean; a 30s ticker nudges a re-render
   const localNow = timezone ? localTimeIn(timezone) : "";
@@ -213,20 +218,46 @@ export function OnboardingForm({ defaults }: Props) {
           </select>
         </Field>
 
-        <Field
-          htmlFor="dailyCallTime"
-          label="When should I call?"
-          hint="A local time, 24-hour. You can change it later."
-        >
-          <input
-            id="dailyCallTime"
-            name="dailyCallTime"
-            type="time"
-            required
-            defaultValue={defaults.dailyCallTime || "08:30"}
-            className={`${FIELD} font-mono`}
-          />
-        </Field>
+        {/* daily call — opt-in. On reveals + requires the time; off submits a
+            cleared time so the cron treats daily calls as off. */}
+        <div>
+          <span className="label-mono mb-2 block">A daily call</span>
+          <label className="flex h-11 cursor-pointer items-center gap-2.5 rounded-sm border border-hairline-strong bg-raised-2 px-3.5 transition-colors duration-200 hover:border-accent/50">
+            <input
+              type="checkbox"
+              name="callDaily"
+              checked={callDaily}
+              onChange={(e) => setCallDaily(e.target.checked)}
+              className="size-4 accent-accent"
+            />
+            <span className="font-sans text-sm text-marble">
+              Call me daily
+            </span>
+          </label>
+          {callDaily ? (
+            <div className="mt-3">
+              <label htmlFor="dailyCallTime" className="label-mono mb-2 block">
+                When should I call?
+              </label>
+              <input
+                id="dailyCallTime"
+                name="dailyCallTime"
+                type="time"
+                required
+                defaultValue={defaults.dailyCallTime || "08:30"}
+                className={`${FIELD} font-mono`}
+              />
+              <p className="mt-1.5 font-sans text-xs leading-relaxed text-marble-dim">
+                A local time, 24-hour — I&apos;ll call around then. You can change
+                it later.
+              </p>
+            </div>
+          ) : (
+            <p className="mt-1.5 font-sans text-xs leading-relaxed text-marble-dim">
+              Off for now. You can still ask me to call any time.
+            </p>
+          )}
+        </div>
       </div>
 
       <Field

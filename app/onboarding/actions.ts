@@ -25,10 +25,15 @@ const ProfileSchema = z.object({
     .min(1, "Please tell me what to call you.")
     .max(80),
   timezone: z.string().trim().min(1).max(64).default("UTC"),
+  // Daily calls are opt-in. "Call me daily" off (or a blank time) persists null
+  // — the cron reads dailyCallTime IS NULL as "calls off". A provided time must
+  // be a valid 24-hour HH:MM. phoneE164 stays independent of this ("Call me now"
+  // still uses it).
   dailyCallTime: z
-    .string()
-    .trim()
-    .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use a 24-hour time like 08:30."),
+    .union([z.literal(""), z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)])
+    .nullish()
+    .transform((v) => (v ? v : null))
+    .catch(() => null),
   phoneE164: z
     .string()
     .trim()

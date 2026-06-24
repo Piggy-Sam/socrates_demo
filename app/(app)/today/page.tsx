@@ -155,13 +155,15 @@ export default async function TodayPage() {
   const hasAnything = Boolean(todaysSummary) || recentEntries.length > 0;
 
   // the standing daily call, said plainly in Socrates' voice — not a countdown,
-  // not a metric; just an honest line about what's arranged, with a way to change it
+  // not a metric; just an honest line about what's arranged, with a way to change
+  // it. "On" requires both a set time (dailyCallTime non-null = enabled) and a
+  // phone to reach; otherwise calls are off.
   const callTime = readCallTime(profile.dailyCallTime);
   const hasPhone = Boolean(profile.phoneE164?.trim());
-  const dailyCallLine =
-    callTime && hasPhone
-      ? `I'll call you around ${callTime} your time.`
-      : "Daily calls are off for now.";
+  const dailyOn = Boolean(callTime && hasPhone);
+  const dailyCallLine = dailyOn
+    ? `I'll call you around ${callTime} your time, most days.`
+    : "Daily calls are off.";
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -209,7 +211,7 @@ export default async function TodayPage() {
             href="/onboarding"
             className="text-marble underline decoration-hairline-strong underline-offset-4 transition-colors hover:text-accent hover:decoration-accent"
           >
-            {callTime && hasPhone ? "Change it" : "Set it up"}
+            {dailyOn ? "Change it" : "Set it up"}
           </Link>
         </p>
       </section>
