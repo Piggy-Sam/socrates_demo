@@ -1,0 +1,80 @@
+/* ───────────────────────────────────────────────────────────────────────────
+   PITCH DECK — print rules (globals.css ships none).
+   On screen: one interactive slide visible, the rest translated off the track.
+   In print: every slide becomes its own landscape page, the dark ground is
+   forced to render, and all animation/chrome is stripped — so a PDF "Print to
+   file" is a faithful, fully-legible 10-page deck (the contingency if the live
+   laptop fails).
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* Screen-only: the horizontal track clips to one slide at a time. The viewport
+   container hides the off-screen slides; print overrides this below. */
+.deck-viewport {
+  overflow: hidden;
+}
+
+@media print {
+  /* Landscape pages with no UA margins — the slide draws edge to edge. */
+  @page {
+    size: landscape;
+    margin: 0;
+  }
+
+  html,
+  body {
+    background: #0b1220 !important; /* --ink (dark) so nothing prints white */
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* the faint graph-paper grid + any app chrome */
+  body {
+    background-image: none !important;
+  }
+
+  /* Controls, indicators, the keyboard hint — anything interactive is noise on
+     paper. */
+  .deck-chrome {
+    display: none !important;
+  }
+
+  /* Kill the track transform + clipping: let slides flow as stacked pages. */
+  .deck-viewport {
+    overflow: visible !important;
+  }
+  .deck-track {
+    display: block !important;
+    transform: none !important;
+    transition: none !important;
+    width: auto !important;
+  }
+
+  /* Each slide is one printed page. Fixed landscape-ish box so content that is
+     centered on screen stays centered (and visible) on the page. */
+  .deck-slide {
+    break-after: page;
+    page-break-after: always;
+    width: 100% !important;
+    height: 100vh !important;
+    transform: none !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .deck-slide:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  /* Static render: no canvases churning, no fade-rise mid-print, no blink. */
+  .deck-slide canvas {
+    /* canvases paint their last frame; keep them but freeze. */
+    animation: none !important;
+  }
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    opacity: 1 !important; /* defeat any fade-rise that hasn't completed */
+  }
+}
