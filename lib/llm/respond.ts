@@ -24,6 +24,14 @@ import type {
 
 const enc = new TextEncoder();
 
+// RAG race ceiling on the VOICE first-token path. The HNSW cosine index
+// (entries_embedding_idx) makes embed + ANN scan typically sub-200ms, so 1200ms
+// is ample headroom while roughly halving the worst-case dead air before Socrates
+// speaks. On timeout the brain falls back gracefully to a RAG-less turn.
+const VOICE_RAG_RACE_MS = 1200;
+// Text chat has no live-call urgency; allow a generous budget for a cold DB.
+const TEXT_RAG_RACE_MS = 8000;
+
 export function openaiError(
   message: string,
   status: number,
@@ -86,7 +94,11 @@ export async function respondAsBrain(
   const ragQuery = buildRagQuery(history);
   const ragContext =
     userId && ragQuery
-      ? await ragWithTimeout(userId, ragQuery, isVoiceCaller ? 2500 : 8000)
+      ? await ragWithTimeout(
+          userId,
+          ragQuery,
+          isVoiceCaller ? VOICE_RAG_RACE_MS : TEXT_RAG_RACE_MS,
+        )
       : "";
   const systemPrompt = buildSystemPrompt(modality, ragContext);
 

@@ -2,7 +2,7 @@
 // Embed the recent context, vector-search the user's prior entries, and return
 // a continuity block to inject into the system prompt.
 
-import { and, cosineDistance, desc, eq, gt, sql } from "drizzle-orm";
+import { and, asc, cosineDistance, eq, gt, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { entries } from "@/lib/db/schema";
 import { embed } from "@/lib/openai";
@@ -29,7 +29,12 @@ export async function searchEntries(
   if (!queryText.trim()) return [];
   try {
     const qv = await embed(queryText);
-    const similarity = sql<number>`1 - (${cosineDistance(entries.embedding, qv)})`;
+    // Order by the RAW cosine-distance operator (ascending) so the Postgres
+    // planner can use the HNSW ANN index (entries_embedding_idx / vector_cosine_ops).
+    // Wrapping the distance in arithmetic (e.g. `1 - dist`) hides the operator from
+    // the planner and forces a sequential scan, so keep distance bare in ORDER BY.
+    const distance = cosineDistance(entries.embedding, qv);
+    const similarity = sql<number>`1 - (${distance})`;
     return await db
       .select({
         id: entries.id,
@@ -46,7 +51,7 @@ export async function searchEntries(
           gt(similarity, minSimilarity),
         ),
       )
-      .orderBy(desc(similarity))
+      .orderBy(asc(distance))
       .limit(k);
   } catch (err) {
     console.error("[rag] searchEntries failed", err);
