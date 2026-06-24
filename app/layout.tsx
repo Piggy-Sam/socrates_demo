@@ -33,6 +33,9 @@ export const viewport: Viewport = {
   ],
   width: "device-width",
   initialScale: 1,
+  // Extend under the notch / home indicator so env(safe-area-inset-*) resolves
+  // non-zero — the call controls and chat composer already pad with those insets.
+  viewportFit: "cover",
 };
 
 // Runs before paint — resolves theme to avoid any flash. Light-first.
