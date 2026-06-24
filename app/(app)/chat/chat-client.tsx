@@ -47,8 +47,41 @@ export function ChatClient({
   const turnsRef = useRef<Turn[]>(turns);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const extractTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   turnsRef.current = turns;
+
+  // Bank extraction is a re-distill of the WHOLE conversation, so it only needs
+  // to run once the user pauses — not after every send. Debounce it onto a quiet
+  // period: each send reschedules, so a fast back-and-forth coalesces into a
+  // single extraction off the hot path. extractChatSession is idempotent +
+  // serialized server-side, so a late re-fire is always safe.
+  const scheduleExtraction = useCallback((sessionId: string) => {
+    if (extractTimerRef.current) clearTimeout(extractTimerRef.current);
+    extractTimerRef.current = setTimeout(() => {
+      extractTimerRef.current = null;
+      void extractChatSession(sessionId).catch((err) => {
+        console.error("[chat] bank extraction failed", err);
+      });
+    }, 4000);
+  }, []);
+
+  // Flush a pending extraction on unmount/navigation so a just-finished thread
+  // still reaches the bank even if the user leaves before the quiet period.
+  useEffect(() => {
+    return () => {
+      if (extractTimerRef.current) {
+        clearTimeout(extractTimerRef.current);
+        extractTimerRef.current = null;
+        const id = sessionIdRef.current;
+        if (id) {
+          void extractChatSession(id).catch((err) => {
+            console.error("[chat] bank extraction failed", err);
+          });
+        }
+      }
+    };
+  }, []);
 
   // Keep the latest exchange in view as tokens arrive.
   useLayoutEffect(() => {
@@ -175,11 +208,10 @@ export function ChatClient({
       const sessionId = await ensureSession();
       await persistTurn(sessionId, text, assistantText);
       // Feed this written conversation into the bank via the SAME pipeline voice
-      // uses (entries + themes + daily summary). Fire-and-forget — never block or
-      // break the chat UI; extractChatSession is idempotent across re-runs.
-      void extractChatSession(sessionId).catch((err) => {
-        console.error("[chat] bank extraction failed", err);
-      });
+      // uses (entries + themes + daily summary). Debounced onto a quiet period —
+      // off the hot path, never blocking the chat UI; extractChatSession is
+      // idempotent + serialized server-side, so re-fires are safe.
+      scheduleExtraction(sessionId);
       if (isNewConversation) {
         // Promote this brand-new thread to its own resumable URL and surface it
         // in the sidebar. router.replace() moves the app to /chat/<id> (so the
@@ -192,7 +224,7 @@ export function ChatClient({
     } catch (err) {
       console.error("[chat] persist failed", err);
     }
-  }, [draft, streaming, ensureSession, router]);
+  }, [draft, streaming, ensureSession, router, scheduleExtraction]);
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
