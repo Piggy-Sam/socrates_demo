@@ -27,9 +27,9 @@ const OPENER_MAX_TOKENS = 120;
 /** Safe, non-empty fallback when there's no context or anything fails. */
 function fallbackOpener(kind: OpenerKind): string {
   if (kind === "daily") {
-    return "Hey — it's your daily check-in. What's been turning over in your mind since we last talked?";
+    return "Hey — it's your daily check-in. What's on your mind right now?";
   }
-  return "Hey — start wherever you are. What's been turning over in your mind?";
+  return "Hey — what's on your mind right now?";
 }
 
 /** Compose the instruction for the model given kind + name + context. */
@@ -39,21 +39,22 @@ function buildInstruction(
   standingContext: string,
 ): string {
   const name = displayName.trim() || "there";
-  const proactive =
+  const framing =
     kind === "daily"
-      ? `This is the scheduled DAILY CHECK-IN call — YOU initiated it, so be proactive: tie the opener to where they actually left off ("Last night you left X unresolved — where did it land?", "You'd been circling Y — has it moved?"). Don't ask how their day was.`
-      : `This opens a conversation they just started, so meet them where they are: open on a live thread from their recent notes, not a blank greeting.`;
+      ? `This is the scheduled DAILY CHECK-IN — YOU placed the call, but still hand them the blank page: lead by asking what's on their mind right now, today. Don't ask how their day was.`
+      : `They just opened the line, so hand them the blank page: lead by asking what's on their mind right now.`;
 
   return `You are Socrates, a thinking partner (a midwife of thought — their insight, not yours).
 Write ONE spoken opening line to begin a conversation with this person. Constraints:
 - 1–2 short sentences, spoken aloud on a call — plain, warm, low-key, genuinely curious. No markdown, no lists, no emoji, no stage directions.
 - No flattery, no grading them, no metrics/streaks, no "how was your day".
-- Reference a LIVE thread from THEIR OWN recent notes below — something specific they were actually thinking about — and end with one inviting, open question that hands the thread back to them.
-- If the notes are thin or empty, open simply and invite them in without inventing specifics.
+- ${framing}
+- LEAD with the present: open by asking what's on their mind / what they want to think through right NOW — a fresh, blank canvas. This is the most important rule: do NOT open by proposing to continue an old topic.
+- Then, ONLY as a light secondary option, you MAY offer to circle back to ONE specific recent thread from their own notes below IF they don't have something new — phrased as a fallback, not the lead. (e.g. "What's on your mind? Or if nothing's pressing, we could pick up where you left off on X.") Keep the circle-back to a brief clause at the end; never make it the main question.
+- If the notes are thin or empty, just ask what's on their mind and invite them in — no invented specifics, no circle-back.
 - You may use their name (${name}) lightly, but don't force it.
-${proactive}
 
-THEIR RECENT THINKING (their own material — use for continuity, never quote verbatim, never interpret it for them):
+THEIR RECENT THINKING (their own material — only for the optional circle-back clause; never quote verbatim, never interpret it for them):
 ${standingContext || "(no recent notes available)"}
 
 Return ONLY the opening line itself, nothing else.`;

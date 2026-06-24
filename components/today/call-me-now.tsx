@@ -1,18 +1,45 @@
 "use client";
 
-import { useState } from "react";
-import { Phone, PhoneCall, SlidersHorizontal } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Phone, PhoneCall, SlidersHorizontal, X } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { Button, LinkButton } from "@/components/ui/button";
 
-type Status = "idle" | "calling" | "ringing" | "error" | "demo";
+type Status = "idle" | "calling" | "ringing" | "error" | "blocked";
+
+/**
+ * The Buy-Me-a-Coffee "Help me pay for Twilio" button. Their button.prod.min.js
+ * reads its own data-* attributes and injects the styled anchor where the script
+ * sits — so we mount the script into a ref'd host on the client only.
+ */
+function BmcButton() {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const host = ref.current;
+    if (!host || host.querySelector("script")) return;
+    const s = document.createElement("script");
+    s.src = "https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js";
+    s.setAttribute("data-name", "bmc-button");
+    s.setAttribute("data-slug", "yancun");
+    s.setAttribute("data-color", "#4d7cff");
+    s.setAttribute("data-emoji", "😢");
+    s.setAttribute("data-font", "Arial");
+    s.setAttribute("data-text", "Help me pay for Twilio");
+    s.setAttribute("data-outline-color", "#ffffff");
+    s.setAttribute("data-font-color", "#ffffff");
+    s.setAttribute("data-coffee-color", "#FFDD00");
+    host.appendChild(s);
+  }, []);
+  return <div ref={ref} className="flex min-h-[3.25rem] justify-center" />;
+}
 
 // A quiet, secondary way to think out loud: ask Socrates to call you. Voice is
 // one feature, never the headline — so this is an outline action, not the
 // page's accent. POSTs to /api/calls/trigger. When there's no number on file we
 // don't offer a button that fails after a click — we point gently to settings.
 // The transient "ringing" state borrows the accent as a status cue and offers a
-// quiet way back so it isn't a one-way door.
+// quiet way back so it isn't a one-way door. Real calls only work for the owner
+// (Twilio trial), so everyone else gets a cheeky "no budget" pop-up → Talk now.
 export function CallMeNow({
   phone,
   hasPhone,
@@ -42,16 +69,17 @@ export function CallMeNow({
       });
 
       const body = (await res.json().catch(() => null)) as
-        | { ok?: boolean; error?: string; demo?: boolean }
+        | { ok?: boolean; error?: string; blocked?: boolean }
         | null;
 
-      // In a "See demo" session real outbound calls are off. The server replies
-      // 200 with { demo: true } so this isn't a failure — show it as a calm note
-      // that points to "Talk now" instead of a red error.
-      if (body?.demo) {
-        setStatus("demo");
+      // Real calls only reach the owner's Twilio-verified number. For demo
+      // sessions and everyone else the server replies 200 with { blocked: true }
+      // — not a failure: open the cheeky "no Twilio budget" pop-up.
+      if (body?.blocked) {
+        setStatus("blocked");
         setMessage(
-          body.error || "Calls are off in the demo — try Talk now instead.",
+          body.error ||
+            "Sorry — I don't got the money to pay for Twilio, so Socrates AI can't give you a call yet…",
         );
         return;
       }
@@ -132,37 +160,100 @@ export function CallMeNow({
         onClick={trigger}
         disabled={calling}
         aria-busy={calling}
-        className="whitespace-nowrap"
       >
-        {/* One stable icon in both states — rotation only while calling, so the
-            phone never duplicates or jumps as the label swaps. */}
-        <motion.span
-          aria-hidden
-          className="inline-block"
-          animate={calling && !reduce ? { rotate: [0, 14, -14, 0] } : { rotate: 0 }}
-          transition={
-            calling && !reduce
-              ? { duration: 0.9, repeat: Infinity, ease: "easeInOut" }
-              : { duration: 0 }
-          }
-        >
-          <Phone className="size-4" strokeWidth={1.6} />
-        </motion.span>
-        {/* Single label whose text content switches — a brief crossfade keyed on
-            the state, no two stacked fragments to overlap or thrash the width. */}
-        <motion.span
-          key={calling ? "calling" : "idle"}
-          initial={reduce ? false : { opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: reduce ? 0 : 0.18 }}
-        >
-          {calling ? "Placing the call…" : "Call me now"}
-        </motion.span>
+        {/* Overlay both states in one grid cell: an invisible sizer reserves the
+            width of the LONGEST label so the button never resizes, and the live
+            content sits centred on top — the label swaps in place, no jump, no
+            overlap, no width thrash. */}
+        <span className="grid place-items-center">
+          <span
+            aria-hidden
+            className="col-start-1 row-start-1 inline-flex items-center gap-2.5 whitespace-nowrap invisible"
+          >
+            <Phone className="size-4" strokeWidth={1.6} />
+            Placing the call…
+          </span>
+          <span className="col-start-1 row-start-1 inline-flex items-center gap-2.5 whitespace-nowrap">
+            <motion.span
+              aria-hidden
+              className="inline-block"
+              animate={
+                calling && !reduce ? { rotate: [0, 14, -14, 0] } : { rotate: 0 }
+              }
+              transition={
+                calling && !reduce
+                  ? { duration: 0.9, repeat: Infinity, ease: "easeInOut" }
+                  : { duration: 0 }
+              }
+            >
+              <Phone className="size-4" strokeWidth={1.6} />
+            </motion.span>
+            {calling ? "Placing the call…" : "Call me now"}
+          </span>
+        </span>
       </Button>
-      {(status === "error" || status === "demo") && message && (
+
+      {status === "error" && message && (
         <p className="font-sans text-sm text-marble-dim text-pretty">
           {message}
         </p>
+      )}
+
+      {/* The cheeky "no Twilio budget" pop-up — shown to demo + everyone who
+          isn't the owner. Support button stacked right on top of "Talk now". */}
+      {status === "blocked" && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Calls are unavailable"
+          className="fixed inset-0 z-50 grid place-items-center bg-ink/70 p-4 backdrop-blur-sm animate-[fade-rise_0.25s_var(--ease-instrument)_both]"
+          onClick={() => setStatus("idle")}
+        >
+          <div
+            className="relative w-full max-w-sm rounded-lg border border-hairline bg-raised p-7 text-center shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              aria-label="Close"
+              onClick={() => setStatus("idle")}
+              className="absolute right-3 top-3 inline-flex size-8 items-center justify-center rounded-sm text-marble-dim transition-colors hover:text-marble"
+            >
+              <X className="size-4" strokeWidth={1.6} />
+            </button>
+            <p className="label-mono text-marble-dim">FIG.404 · NO BUDGET</p>
+            <h3 className="mt-3 font-display text-xl font-normal tracking-tight text-marble">
+              Can&apos;t call you (yet)
+            </h3>
+            <p className="mt-2.5 font-sans text-sm leading-relaxed text-marble-dim text-pretty">
+              {message} 😢
+            </p>
+            <p className="mt-2 font-sans text-sm leading-relaxed text-marble-dim text-pretty">
+              But you can still have the whole conversation right here in the
+              browser — same Socrates, no phone needed.
+            </p>
+            <div className="mt-6 flex flex-col items-center gap-3">
+              {/* sneak in the support button, right on top of Talk now */}
+              <BmcButton />
+              <LinkButton
+                href="/talk"
+                variant="accent"
+                size="lg"
+                className="w-full"
+              >
+                <Phone className="size-4" strokeWidth={1.6} />
+                Talk now instead
+              </LinkButton>
+              <button
+                type="button"
+                onClick={() => setStatus("idle")}
+                className="label-mono text-marble-dim transition-colors hover:text-marble"
+              >
+                maybe later
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

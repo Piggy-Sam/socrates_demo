@@ -111,26 +111,27 @@ export default function Home() {
                 baseline. Type scale matches the old two-line h1 exactly so the
                 hero doesn't reflow when this swapped in. */}
             <h1 className="mt-7 max-w-full font-display text-xl font-light leading-relaxed tracking-tight text-marble-dim animate-[fade-rise_0.7s_var(--ease-instrument)_0.1s_both] sm:text-[1.7rem]">
-              <span className="flex flex-wrap items-center justify-center gap-x-[0.3em] lg:justify-start">
+              <span className="flex flex-wrap items-center justify-center gap-x-[0.6em] lg:justify-start">
                 <span className="text-marble-dim">The midwife for</span>
                 <PhraseCycler />
               </span>
             </h1>
 
             <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row">
-              {/* the demo is the headline action — a live, fully-populated
-                  account anyone can explore. accent is rationed to it here. */}
+              <LinkButton href="/login" size="lg" variant="accent">
+                Begin
+              </LinkButton>
+              {/* See demo is the secondary action — a live, fully-populated
+                  account anyone can explore with no sign-up. */}
               <form action={startDemo} className="contents">
-                <Button type="submit" size="lg" variant="accent">
+                <Button type="submit" size="lg" variant="outline">
                   See demo
                 </Button>
               </form>
-              <LinkButton href="/login" size="lg" variant="outline">
-                Begin
-              </LinkButton>
             </div>
             <p className="label-mono mt-3.5 text-marble-dim">
-              No sign-up — explore a live account · nothing you do is saved
+              See demo: no sign-up, a live account to explore · nothing you do is
+              saved
             </p>
           </div>
         </section>
@@ -309,14 +310,14 @@ export default function Home() {
               you can already call your own.
             </p>
             <div className="mt-9 flex flex-col items-center gap-3 sm:flex-row">
+              <LinkButton href="/login" size="lg" variant="accent">
+                Begin
+              </LinkButton>
               <form action={startDemo} className="contents">
-                <Button type="submit" size="lg" variant="accent">
+                <Button type="submit" size="lg" variant="outline">
                   See demo
                 </Button>
               </form>
-              <LinkButton href="/login" size="lg" variant="outline">
-                Begin
-              </LinkButton>
             </div>
           </div>
         </section>
