@@ -9,6 +9,7 @@ import {
 } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ArrowUp } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { StarMark } from "@/components/brand/wordmark";
@@ -30,16 +31,25 @@ export function ChatClient({
   displayName,
   initialTurns = [],
   initialSessionId = null,
+  seed = null,
 }: {
   displayName: string | null;
   initialTurns?: Turn[];
   initialSessionId?: string | null;
+  // A server-resolved one-line callback prompt (from a banked thought or a call)
+  // that PREFILLS the composer — closing the think → bank → revisit loop. Never
+  // auto-sent; the user reads, edits, and presses send on their own thought.
+  seed?: string | null;
 }) {
   const router = useRouter();
   const [turns, setTurns] = useState<Turn[]>(initialTurns);
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft] = useState(seed ?? "");
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Once a completed exchange has been fed to the bank pipeline, show a single
+  // quiet invitation back to /bank. A resumed thread (initialTurns already on
+  // file) is, by definition, already collecting. Strictly singular + non-metric.
+  const [collecting, setCollecting] = useState(initialTurns.length > 0);
   const reduce = useReducedMotion();
 
   const sessionIdRef = useRef<string | null>(initialSessionId);
@@ -212,6 +222,7 @@ export function ChatClient({
       // off the hot path, never blocking the chat UI; extractChatSession is
       // idempotent + serialized server-side, so re-fires are safe.
       scheduleExtraction(sessionId);
+      setCollecting(true);
       if (isNewConversation) {
         // Promote this brand-new thread to its own resumable URL and surface it
         // in the sidebar. router.replace() moves the app to /chat/<id> (so the
@@ -270,6 +281,20 @@ export function ChatClient({
 
       {error && (
         <p className="label-mono mb-3 text-marble-dim">{error}</p>
+      )}
+
+      {/* a single quiet invitation back to the bank once this thread has begun
+          collecting there — closes the loop, stays non-metric (no count). */}
+      {collecting && !empty && (
+        <Link
+          href="/bank"
+          className="label-mono group mb-3 inline-flex items-center gap-1.5 self-start text-marble-dim transition-colors hover:text-accent"
+        >
+          this is collecting in your bank
+          <span aria-hidden className="transition-transform group-hover:translate-x-0.5">
+            &rarr;
+          </span>
+        </Link>
       )}
 
       {/* composer */}

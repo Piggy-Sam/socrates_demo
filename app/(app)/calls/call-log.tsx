@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Phone, Mic, ChevronDown } from "lucide-react";
 import { renderRecap } from "@/components/recap/render-recap";
 
@@ -206,6 +207,26 @@ function CallCard({ call }: { call: CallLogItem }) {
           )}
         </div>
       )}
+
+      {/* close the loop — carry this call back into thinking. Seeded server-side
+          on /chat from this session's summary (never client text). Only offered
+          when there's something distilled to press on. */}
+      {call.summary ? (
+        <div className="mt-5 border-t border-hairline pt-4">
+          <Link
+            href={`/chat?fromCall=${encodeURIComponent(call.id)}`}
+            className="label-mono group inline-flex items-center gap-1.5 text-marble-dim transition-colors hover:text-accent"
+          >
+            Take this further in writing
+            <span
+              aria-hidden
+              className="transition-transform group-hover:translate-x-0.5"
+            >
+              &rarr;
+            </span>
+          </Link>
+        </div>
+      ) : null}
     </article>
   );
 }

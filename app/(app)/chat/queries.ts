@@ -4,7 +4,7 @@
 
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { messages, sessions } from "@/lib/db/schema";
+import { entries, messages, sessions, summaries } from "@/lib/db/schema";
 
 export type ChatListItem = {
   id: string;
@@ -113,4 +113,84 @@ export async function loadChatSession(
     .orderBy(asc(messages.createdAt));
 
   return rows.map((r) => ({ id: r.id, role: r.role, content: r.content }));
+}
+
+// Closing the loop: a banked thought or a finished call can be carried BACK into
+// thinking. The chat composer accepts a server-resolved seed (never client text
+// — the id is resolved against the user's own rows here) that prefills, but does
+// not auto-send, the composer. The framing is an invitation to press further on
+// the user's OWN words, not a prompt that thinks for them.
+
+// Collapse a stored thought down to a single clean line to seed the composer:
+// strip markdown emphasis/headings/bullets, take the first sentence-ish chunk,
+// and clamp it so the prefill stays a starting point, not a wall of text.
+function oneLine(text: string, max = 220): string {
+  const clean = text
+    .replace(/[*_`#>]+/g, " ") // markdown emphasis/heading/quote marks
+    .replace(/^\s*[-•]\s+/gm, "") // list bullets
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!clean) return "";
+  // Prefer the first sentence; fall back to the whole (clamped) line.
+  const firstStop = clean.search(/[.?!](\s|$)/);
+  const head =
+    firstStop > 40 ? clean.slice(0, firstStop + 1) : clean;
+  if (head.length <= max) return head;
+  return head.slice(0, max - 1).trimEnd() + "…";
+}
+
+/**
+ * Resolve a banked entry into a one-line callback prompt for the composer, after
+ * verifying ownership. Returns null if the entry isn't the user's (or is gone),
+ * so a tampered ?from= silently no-ops instead of leaking anything.
+ */
+export async function resolveEntrySeed(
+  userId: string,
+  entryId: string,
+): Promise<string | null> {
+  const rows = await db
+    .select({ content: entries.content })
+    .from(entries)
+    .where(and(eq(entries.id, entryId), eq(entries.userId, userId)))
+    .limit(1);
+  const content = rows[0]?.content;
+  if (!content) return null;
+  const line = oneLine(content);
+  if (!line) return null;
+  return `I want to press further on something I banked: ${line}`;
+}
+
+/**
+ * Resolve a finished voice session into a callback prompt seeded from its daily
+ * summary (the webhook writes sourceSessionIds = [sessionId]), after verifying
+ * the session is the user's. Returns null if unowned or nothing was distilled.
+ */
+export async function resolveCallSeed(
+  userId: string,
+  sessionId: string,
+): Promise<string | null> {
+  const owned = await db
+    .select({ id: sessions.id })
+    .from(sessions)
+    .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)))
+    .limit(1);
+  if (!owned[0]) return null;
+
+  // The per-session daily summary; pick the most recent if more than one matches.
+  const sums = await db
+    .select({
+      content: summaries.content,
+      sourceSessionIds: summaries.sourceSessionIds,
+    })
+    .from(summaries)
+    .where(and(eq(summaries.userId, userId), eq(summaries.kind, "daily")))
+    .orderBy(desc(summaries.createdAt))
+    .limit(200);
+  const match = sums.find((s) =>
+    (s.sourceSessionIds ?? []).includes(sessionId),
+  );
+  if (!match) return null;
+  const line = oneLine(match.content);
+  if (!line) return null;
+  return `I want to take something from a call further in writing: ${line}`;
 }

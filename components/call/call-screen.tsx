@@ -5,6 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ConversationProvider } from "@elevenlabs/react";
 import { Mic, MicOff, PhoneOff } from "lucide-react";
 import { BreathingStar } from "@/components/sky/breathing-star";
+import { LinkButton } from "@/components/ui/button";
 import { emitJolt } from "@/lib/dots";
 import {
   useSocratesCall,
@@ -139,6 +140,11 @@ function CallSurface({ displayName }: Props) {
         ) : (
           <StartControl phase={phase} onStart={start} />
         )}
+
+        {/* Close the loop: a call ends pointing somewhere, not at a quiet orb.
+            A calm mono confirmation + a path to where it was distilled. No
+            counts — an invitation, not a scoreboard. */}
+        {phase === "ended" ? <EndedCallback /> : null}
       </footer>
     </div>
   );
@@ -290,6 +296,22 @@ function StartControl({
     >
       {connecting ? "connecting…" : label}
     </button>
+  );
+}
+
+// Shown after the line goes quiet: a calm confirmation and a link to where the
+// conversation was set down. Secondary (outline) so it never competes with the
+// single rationed accent (the orb + "Talk again"); no metrics.
+function EndedCallback() {
+  return (
+    <div className="flex flex-col items-center gap-3 text-center">
+      <p className="label-mono text-marble-dim">
+        surfaced &mdash; what came up is in your calls log
+      </p>
+      <LinkButton href="/calls" variant="outline" size="sm">
+        open the calls log &rarr;
+      </LinkButton>
+    </div>
   );
 }
 

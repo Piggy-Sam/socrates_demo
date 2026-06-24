@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { Search, Grid3x3, List, X } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Constellation } from "@/components/sky/constellation";
@@ -219,6 +220,10 @@ export function BankView({
                     ))}
                   </div>
                 ) : null}
+                {/* close the loop — carry this banked thought back into thinking */}
+                <div className="mt-5 border-t border-hairline pt-4">
+                  <PressOnThis entryId={selected.id} />
+                </div>
               </motion.div>
             ) : (
               <motion.p
@@ -289,6 +294,9 @@ export function BankView({
                               ))}
                             </div>
                           ) : null}
+                          <div className="mt-3">
+                            <PressOnThis entryId={e.id} />
+                          </div>
                         </div>
                       </li>
                     ))}
@@ -300,6 +308,23 @@ export function BankView({
         </div>
       )}
     </div>
+  );
+}
+
+// A quiet hairline action that carries a banked thought back into thinking. The
+// seed is resolved server-side on /chat from the entry id (never client text).
+// Deliberately mono + dim so the single rationed accent stays on the field/card.
+function PressOnThis({ entryId }: { entryId: string }) {
+  return (
+    <Link
+      href={`/chat?from=${encodeURIComponent(entryId)}`}
+      className="label-mono group inline-flex items-center gap-1.5 text-marble-dim transition-colors hover:text-accent"
+    >
+      Press on this
+      <span aria-hidden className="transition-transform group-hover:translate-x-0.5">
+        &rarr;
+      </span>
+    </Link>
   );
 }
 
