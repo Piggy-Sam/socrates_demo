@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { DotMatrix } from "@/components/decor/dot-matrix";
+import { Wordmark } from "@/components/brand/wordmark";
 import { SLIDES } from "./slides";
 
 const COUNT = SLIDES.length; // 10
@@ -91,6 +92,11 @@ export function PitchDeck() {
                 className="absolute inset-0 -z-10"
                 intensity={0.5}
               />
+              {/* persistent brand mark on every slide (and every printed page) —
+                  not chrome, so it survives the PDF export */}
+              <div className="absolute top-6 left-8 z-10 sm:top-8 sm:left-12">
+                <Wordmark size="sm" href={null} staticCursor />
+              </div>
               <div className="mx-auto flex w-full max-w-6xl flex-col px-8 sm:px-14 lg:px-20">
                 {/* render only the active slide's interactive parts as "live";
                     all slides receive `active` so e.g. the orb on slide 8 only
