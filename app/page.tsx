@@ -1,8 +1,9 @@
 import { LandingField } from "@/components/decor/landing-field";
 import { Wordmark } from "@/components/brand/wordmark";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
-import { LinkButton } from "@/components/ui/button";
+import { Button, LinkButton } from "@/components/ui/button";
 import { PhraseCycler } from "@/components/landing/phrase-cycler";
+import { startDemo } from "./demo-actions";
 
 // ── THE OPPOSITE STANCE — the principles, grown from the three on /about ──────
 const PRINCIPLES = [
@@ -117,13 +118,20 @@ export default function Home() {
             </h1>
 
             <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row">
-              <LinkButton href="/login" size="lg" variant="accent">
+              {/* the demo is the headline action — a live, fully-populated
+                  account anyone can explore. accent is rationed to it here. */}
+              <form action={startDemo} className="contents">
+                <Button type="submit" size="lg" variant="accent">
+                  See demo
+                </Button>
+              </form>
+              <LinkButton href="/login" size="lg" variant="outline">
                 Begin
               </LinkButton>
-              <LinkButton href="/about" size="lg" variant="ghost">
-                See the instrument
-              </LinkButton>
             </div>
+            <p className="label-mono mt-3.5 text-marble-dim">
+              No sign-up — explore a live account · nothing you do is saved
+            </p>
           </div>
         </section>
       </div>
@@ -301,11 +309,13 @@ export default function Home() {
               you can already call your own.
             </p>
             <div className="mt-9 flex flex-col items-center gap-3 sm:flex-row">
-              <LinkButton href="/login" size="lg" variant="accent">
+              <form action={startDemo} className="contents">
+                <Button type="submit" size="lg" variant="accent">
+                  See demo
+                </Button>
+              </form>
+              <LinkButton href="/login" size="lg" variant="outline">
                 Begin
-              </LinkButton>
-              <LinkButton href="/about" size="lg" variant="ghost">
-                See the instrument
               </LinkButton>
             </div>
           </div>

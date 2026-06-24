@@ -32,6 +32,7 @@ export function ChatClient({
   initialTurns = [],
   initialSessionId = null,
   seed = null,
+  isDemo = false,
 }: {
   displayName: string | null;
   initialTurns?: Turn[];
@@ -40,6 +41,11 @@ export function ChatClient({
   // that PREFILLS the composer — closing the think → bank → revisit loop. Never
   // auto-sent; the user reads, edits, and presses send on their own thought.
   seed?: string | null;
+  // In a "See demo" session the conversation is purely ephemeral: nothing is
+  // persisted, so we DON'T promote a new thread to its own URL / refresh the
+  // layout (that would re-mount with empty initialTurns and wipe the visitor's
+  // live conversation). It simply lives in this component until refresh.
+  isDemo?: boolean;
 }) {
   const router = useRouter();
   const [turns, setTurns] = useState<Turn[]>(initialTurns);
@@ -220,6 +226,15 @@ export function ChatClient({
     // a user `text` above, so persist it regardless of whether Socrates replied;
     // persistTurn() drops empty content, so a blank assistantText safely stores
     // just the user message instead of losing it on refresh.
+    // Demo: the conversation is purely ephemeral. Skip session creation,
+    // persistence, extraction, AND the promote-to-URL refresh — that refresh
+    // would re-mount this component with empty initialTurns and wipe the live
+    // conversation. It simply lives here until the visitor refreshes.
+    if (isDemo) {
+      setCollecting(true);
+      return;
+    }
+
     try {
       const isNewConversation = !sessionIdRef.current;
       const sessionId = await ensureSession();
@@ -242,7 +257,7 @@ export function ChatClient({
     } catch (err) {
       console.error("[chat] persist failed", err);
     }
-  }, [draft, streaming, ensureSession, router, scheduleExtraction]);
+  }, [draft, streaming, ensureSession, router, scheduleExtraction, isDemo]);
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {

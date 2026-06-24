@@ -9,7 +9,7 @@
 
 import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
-import { getCurrentUser } from "@/lib/auth";
+import { getAuthIdentity } from "@/lib/auth";
 import { db } from "@/lib/db/client";
 import { summaries } from "@/lib/db/schema";
 import { generateRecap } from "@/lib/recap/generate";
@@ -24,8 +24,8 @@ function parseDate(value: unknown): Date | null {
 }
 
 export async function POST(req: Request) {
-  const user = await getCurrentUser();
-  if (!user) {
+  const identity = await getAuthIdentity();
+  if (!identity) {
     return NextResponse.json({ ok: false, error: "Not signed in." }, {
       status: 401,
     });
@@ -50,7 +50,8 @@ export async function POST(req: Request) {
     );
   }
 
-  const result = await generateRecap(user.id, start, end);
+  // RUN the generation in demo too; only the destructive replace below is skipped.
+  const result = await generateRecap(identity.userId, start, end);
   if (!result.ok) {
     return NextResponse.json(
       { ok: false, error: result.error },
@@ -58,29 +59,34 @@ export async function POST(req: Request) {
     );
   }
 
-  // Replace, don't duplicate: drop the existing weekly row(s) for this exact
-  // period, then insert the fresh reflection. Both inside one best-effort guard
-  // so a persistence hiccup still hands the recap back to the reader.
-  try {
-    await db
-      .delete(summaries)
-      .where(
-        and(
-          eq(summaries.userId, user.id),
-          eq(summaries.kind, "weekly"),
-          eq(summaries.periodStart, start),
-          eq(summaries.periodEnd, end),
-        ),
-      );
-    await db.insert(summaries).values({
-      userId: user.id,
-      kind: "weekly",
-      periodStart: start,
-      periodEnd: end,
-      content: result.content,
-    });
-  } catch (err) {
-    console.error("[recap/regenerate] replace failed", err);
+  // Demo: read-only, and CRITICALLY non-destructive — never delete the seeded
+  // weekly recaps. Skip the entire replace so the seeded rows stay intact; the
+  // client still receives { ok, content } and a refresh shows the seeded recap.
+  if (!identity.isDemo) {
+    // Replace, don't duplicate: drop the existing weekly row(s) for this exact
+    // period, then insert the fresh reflection. Both inside one best-effort guard
+    // so a persistence hiccup still hands the recap back to the reader.
+    try {
+      await db
+        .delete(summaries)
+        .where(
+          and(
+            eq(summaries.userId, identity.userId),
+            eq(summaries.kind, "weekly"),
+            eq(summaries.periodStart, start),
+            eq(summaries.periodEnd, end),
+          ),
+        );
+      await db.insert(summaries).values({
+        userId: identity.userId,
+        kind: "weekly",
+        periodStart: start,
+        periodEnd: end,
+        content: result.content,
+      });
+    } catch (err) {
+      console.error("[recap/regenerate] replace failed", err);
+    }
   }
 
   return NextResponse.json({ ok: true, content: result.content });

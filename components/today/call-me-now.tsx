@@ -5,7 +5,7 @@ import { Phone, PhoneCall, SlidersHorizontal } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { Button, LinkButton } from "@/components/ui/button";
 
-type Status = "idle" | "calling" | "ringing" | "error";
+type Status = "idle" | "calling" | "ringing" | "error" | "demo";
 
 // A quiet, secondary way to think out loud: ask Socrates to call you. Voice is
 // one feature, never the headline — so this is an outline action, not the
@@ -42,8 +42,19 @@ export function CallMeNow({
       });
 
       const body = (await res.json().catch(() => null)) as
-        | { ok?: boolean; error?: string }
+        | { ok?: boolean; error?: string; demo?: boolean }
         | null;
+
+      // In a "See demo" session real outbound calls are off. The server replies
+      // 200 with { demo: true } so this isn't a failure — show it as a calm note
+      // that points to "Talk now" instead of a red error.
+      if (body?.demo) {
+        setStatus("demo");
+        setMessage(
+          body.error || "Calls are off in the demo — try Talk now instead.",
+        );
+        return;
+      }
 
       if (!res.ok) {
         setStatus("error");
@@ -148,7 +159,7 @@ export function CallMeNow({
           {calling ? "Placing the call…" : "Call me now"}
         </motion.span>
       </Button>
-      {status === "error" && message && (
+      {(status === "error" || status === "demo") && message && (
         <p className="font-sans text-sm text-marble-dim text-pretty">
           {message}
         </p>

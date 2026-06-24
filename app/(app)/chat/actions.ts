@@ -4,10 +4,11 @@
 // components live in ./queries (plain module, not actions). Everything is scoped
 // to the authenticated user.
 
+import { randomUUID } from "node:crypto";
 import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { messages, sessions } from "@/lib/db/schema";
-import { getCurrentUser } from "@/lib/auth";
+import { requireUser } from "@/lib/auth";
 import { extractAndStore } from "@/lib/pipeline/extraction";
 import { detectPatterns } from "@/lib/pipeline/patterns";
 import type { TranscriptTurn } from "@/lib/pipeline/types";
@@ -19,8 +20,14 @@ import type { TranscriptTurn } from "@/lib/pipeline/types";
  * the first send, so opening /chat without typing never spawns an empty row.
  */
 export async function createChatSession(): Promise<string> {
-  const user = await getCurrentUser();
-  if (!user) throw new Error("Not authenticated.");
+  const user = await requireUser();
+
+  // Demo: never write. Hand back a synthetic, client-only session id so the chat
+  // behaves like a live, ephemeral conversation (it streams a reply, then is gone
+  // on refresh). The id is a real UUID so /chat/[id] doesn't 404 mid-session;
+  // persistTurn/extractChatSession below are no-ops, and the [id] page treats a
+  // not-in-DB session as an empty new chat for a demo visitor.
+  if (user.isDemo) return randomUUID();
 
   const inserted = await db
     .insert(sessions)
@@ -39,8 +46,11 @@ export async function persistTurn(
   userText: string,
   socratesText: string,
 ): Promise<void> {
-  const user = await getCurrentUser();
-  if (!user) throw new Error("Not authenticated.");
+  const user = await requireUser();
+
+  // Demo: read-only. The exchange stays in the browser (the client already holds
+  // the turns) and vanishes on refresh — nothing touches the seeded account.
+  if (user.isDemo) return;
 
   const owned = await db
     .select({ id: sessions.id })
@@ -81,8 +91,11 @@ export async function persistTurn(
  * Verifies session ownership + type before touching anything (like persistTurn).
  */
 export async function extractChatSession(sessionId: string): Promise<void> {
-  const user = await getCurrentUser();
-  if (!user) throw new Error("Not authenticated.");
+  const user = await requireUser();
+
+  // Demo: read-only. No distillation, no entries, no themes, no daily summary,
+  // no pattern detection — the seeded bank stays pristine.
+  if (user.isDemo) return;
 
   const owned = await db
     .select({ id: sessions.id })

@@ -14,7 +14,7 @@
 
 import { NextRequest } from "next/server";
 import { env } from "@/lib/env";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthIdentity } from "@/lib/auth";
 import type { ChatCompletionRequest } from "@/lib/llm/types";
 import { bearerMatches, extractBearer, extractUserId } from "@/lib/llm/brain";
 import { openaiError, respondAsBrain } from "@/lib/llm/respond";
@@ -53,11 +53,12 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   if (!isVoiceCaller) {
     try {
-      const supabase = await createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) userId = user.id;
+      // Resolve the acting identity: a real signed-in user, OR — in a "See demo"
+      // session — the seeded demo account, so demo chat keeps full RAG + standing
+      // context. This route is READ-ONLY (it never writes), so impersonating the
+      // demo account here is safe; writes are gated elsewhere on isDemo.
+      const identity = await getAuthIdentity();
+      if (identity) userId = identity.userId;
     } catch {
       // fall through to 401 below
     }

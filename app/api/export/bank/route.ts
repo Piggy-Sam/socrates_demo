@@ -8,7 +8,7 @@
 
 import { NextResponse } from "next/server";
 import { asc, desc, eq } from "drizzle-orm";
-import { getCurrentUser } from "@/lib/auth";
+import { getAuthIdentity } from "@/lib/auth";
 import { db } from "@/lib/db/client";
 import { entries, themes } from "@/lib/db/schema";
 
@@ -35,13 +35,15 @@ function dayKey(d: Date): string {
 }
 
 export async function GET(req: Request) {
-  const user = await getCurrentUser();
-  if (!user) {
+  // READ-ONLY export. Resolve the acting identity so a demo session can export
+  // the seeded bank (harmless — it only reads the demo account's own rows).
+  const identity = await getAuthIdentity();
+  if (!identity) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
 
   // The user's whole bank, oldest first so the document reads as a ledger in
-  // time. Scoped to user.id — ownership enforced here, server-side, always.
+  // time. Scoped to the acting id — ownership enforced here, server-side, always.
   const rows = await db
     .select({
       id: entries.id,
@@ -51,7 +53,7 @@ export async function GET(req: Request) {
       createdAt: entries.createdAt,
     })
     .from(entries)
-    .where(eq(entries.userId, user.id))
+    .where(eq(entries.userId, identity.userId))
     .orderBy(asc(entries.createdAt));
 
   const themeRows = await db
@@ -62,7 +64,7 @@ export async function GET(req: Request) {
       lastSeen: themes.lastSeen,
     })
     .from(themes)
-    .where(eq(themes.userId, user.id))
+    .where(eq(themes.userId, identity.userId))
     .orderBy(desc(themes.lastSeen));
 
   const format = new URL(req.url).searchParams.get("format");

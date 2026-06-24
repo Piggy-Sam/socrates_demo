@@ -13,16 +13,35 @@ export default async function ResumeChatPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { userId, profile } = await requireProfile();
+  const { userId, profile, isDemo } = await requireProfile();
 
   const turns = await loadChatSession(userId, id);
-  if (turns === null) notFound();
+
+  if (turns === null) {
+    // Demo: a new chat lives only in the browser (createChatSession returns a
+    // synthetic id without a DB row). After the first send the client navigates
+    // here, so a not-in-DB session for a demo visitor is just an empty new chat —
+    // render it as such (initialTurns the client already holds stay in memory)
+    // rather than 404. Seeded chats still load via loadChatSession above.
+    if (isDemo) {
+      return (
+        <ChatClient
+          displayName={profile.displayName ?? null}
+          initialTurns={[]}
+          initialSessionId={id}
+          isDemo
+        />
+      );
+    }
+    notFound();
+  }
 
   return (
     <ChatClient
       displayName={profile.displayName ?? null}
       initialTurns={turns}
       initialSessionId={id}
+      isDemo={isDemo}
     />
   );
 }
