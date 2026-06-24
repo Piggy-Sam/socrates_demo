@@ -50,6 +50,10 @@ export function ChatClient({
   // quiet invitation back to /bank. A resumed thread (initialTurns already on
   // file) is, by definition, already collecting. Strictly singular + non-metric.
   const [collecting, setCollecting] = useState(initialTurns.length > 0);
+  // The completed assistant turn, announced ONCE to screen readers when a stream
+  // finishes — so a reply reads as one statement, not a torrent of token
+  // fragments. The transcript container itself is NOT a live region.
+  const [announce, setAnnounce] = useState("");
   const reduce = useReducedMotion();
 
   const sessionIdRef = useRef<string | null>(initialSessionId);
@@ -207,6 +211,9 @@ export function ChatClient({
       }
     } finally {
       setStreaming(false);
+      // Hand the FINISHED reply to the live region exactly once. Screen readers
+      // get the whole turn as one announcement instead of streaming fragments.
+      if (assistantText) setAnnounce(assistantText);
     }
 
     // Persist the completed exchange (best-effort; never block the UI). We saved
@@ -248,11 +255,16 @@ export function ChatClient({
 
   return (
     <div className="flex min-h-[60vh] flex-col">
+      {/* A completed Socrates reply is announced ONCE here, not streamed token
+          by token. The transcript below is therefore NOT a live region. */}
+      <p role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+        {announce}
+      </p>
+
       {/* transcript */}
       <div
         ref={scrollRef}
         className="flex-1 overflow-y-auto pb-6"
-        aria-live="polite"
         aria-busy={streaming}
       >
         {empty ? (

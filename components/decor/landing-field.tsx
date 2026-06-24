@@ -42,7 +42,8 @@ export function LandingField({ faceId, className = "", spacing = 22 }: Props) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const reduceMq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let reduce = reduceMq.matches;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     let S = spacing;
     let w = 0, h = 0, cols = 0, rows = 0, raf = 0;
@@ -301,6 +302,21 @@ export function LandingField({ faceId, className = "", spacing = 22 }: Props) {
     // viewport rect shifts on scroll — re-measure then (cheap, not per-frame).
     window.addEventListener("scroll", measure, { passive: true });
     document.addEventListener("visibilitychange", onVisibility);
+
+    // Live reduced-motion toggle: the OS preference can flip while the page is
+    // open. On change we re-evaluate WITHOUT a remount — park the RAF + paint
+    // one static frame, or resume the loop (re-measuring the face geometry).
+    const onReduceChange = (e: MediaQueryListEvent) => {
+      reduce = e.matches;
+      if (reduce) {
+        if (raf) { cancelAnimationFrame(raf); raf = 0; }
+        draw(0);
+      } else {
+        sync();
+      }
+    };
+    reduceMq.addEventListener("change", onReduceChange);
+
     if (reduce) {
       draw(0);
     } else {
@@ -310,6 +326,7 @@ export function LandingField({ faceId, className = "", spacing = 22 }: Props) {
     return () => {
       cancelAnimationFrame(raf);
       ro.disconnect(); faceRo.disconnect(); mo.disconnect(); io.disconnect();
+      reduceMq.removeEventListener("change", onReduceChange);
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerdown", onMove);
       window.removeEventListener("pointerup", onUp);

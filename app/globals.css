@@ -200,6 +200,41 @@
     background: var(--accent);
     animation: var(--animate-blink);
   }
+
+  /* visually hidden but available to assistive tech (skip link, live regions,
+     off-screen headings). Standard clip-rect technique. */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* the skip link: hidden until focused, then it lands as a real control —
+     a small mono chip in the single accent, top-left, above everything. */
+  .skip-link {
+    position: fixed;
+    top: 0.5rem;
+    left: 0.5rem;
+    z-index: 100;
+    transform: translateY(-150%);
+    padding: 0.5rem 0.875rem;
+    border-radius: var(--radius-sm);
+    background: var(--accent-btn);
+    color: #fff;
+    font-family: var(--font-mono-display);
+    font-size: var(--text-2xs);
+    letter-spacing: var(--tracking-instrument);
+    text-transform: uppercase;
+  }
+  .skip-link:focus {
+    transform: translateY(0);
+  }
 }
 
 /* ── motion ─────────────────────────────────────────────────────────────────── */

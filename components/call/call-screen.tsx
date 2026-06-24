@@ -80,12 +80,29 @@ function CallSurface({ displayName }: Props) {
   const isActive = phase === "live" || phase === "connecting";
   const firstName = displayName.trim().split(/\s+/)[0] || "friend";
 
+  // The single canonical status string — shown in the StatusLine AND narrated
+  // once by the lone assertive live region below. Deriving it here keeps the
+  // visible readout and the announcement from drifting apart.
+  const status = statusLabel(phase, starState);
+
   return (
     // Height derives from --nav-h (set on the app shell) so the column fits
     // exactly UNDER the sticky nav — the live controls can never slip below the
     // fold. justify-between pins the footer to the bottom; the caption band in
     // the middle is internally clamped so a long turn can't push it off-screen.
     <div className="relative flex min-h-[calc(100dvh-var(--nav-h))] flex-col items-center justify-between overflow-hidden bg-ink px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))]">
+      {/* off-screen page heading for screen-reader heading navigation */}
+      <h1 className="sr-only">Talk to Socrates</h1>
+
+      {/* THE single phase announcer. One assertive, atomic live region carries
+          every status change ("listening", "Socrates is speaking", …) exactly
+          once — replacing the three competing live regions that used to narrate
+          over each other and clobber the captions. The captions are the only
+          other live region (polite). */}
+      <p role="status" aria-live="assertive" aria-atomic="true" className="sr-only">
+        {status}
+      </p>
+
       {/* ambient field — a faint dot-grid, like graph paper for the instrument */}
       <div
         aria-hidden
@@ -109,8 +126,9 @@ function CallSurface({ displayName }: Props) {
           <BreathingStar state={starState} size={orbSize} />
         </div>
 
-        {/* status line — the single source of truth for what's happening */}
-        <StatusLine phase={phase} starState={starState} firstName={firstName} />
+        {/* status line — the visible readout. NOT a live region: the lone
+            assertive announcer above narrates the same status once. */}
+        <StatusLine status={status} phase={phase} firstName={firstName} />
       </main>
 
       {/* live captions — a short rolling transcript, clamped to a fixed band so
@@ -227,29 +245,26 @@ function Captions({
   );
 }
 
+// The single source of truth for the call's status string, used both for the
+// visible readout and the lone assertive announcer.
+function statusLabel(phase: CallPhase, starState: string): string {
+  if (phase === "idle") return "ready when you are";
+  if (phase === "error") return "the line is quiet";
+  return STATUS_COPY[starState] ?? STATUS_COPY[phase] ?? "with you";
+}
+
 function StatusLine({
+  status,
   phase,
-  starState,
   firstName,
 }: {
+  status: string;
   phase: CallPhase;
-  starState: string;
   firstName: string;
 }) {
-  let label: string;
-  if (phase === "idle") {
-    label = "ready when you are";
-  } else if (phase === "error") {
-    label = "the line is quiet";
-  } else {
-    label = STATUS_COPY[starState] ?? STATUS_COPY[phase] ?? "with you";
-  }
-
   return (
     <div className="flex flex-col items-center gap-2 text-center">
-      <span className="label-mono" aria-live="polite">
-        {label}
-      </span>
+      <span className="label-mono">{status}</span>
       {phase === "idle" ? (
         <p className="text-pretty font-sans text-xl text-marble-dim">
           What&rsquo;s on your mind, {firstName}?

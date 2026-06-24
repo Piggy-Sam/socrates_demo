@@ -104,9 +104,8 @@ export function BreathingStar({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const reduce = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
+    const reduceMq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let reduce = reduceMq.matches;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     let raf = 0;
     let lastDraw = 0; // frame-budget gate (ProMotion guard)
@@ -291,10 +290,32 @@ export function BreathingStar({
       else sync();
     };
 
+    // Live reduced-motion toggle: matchMedia is read once at mount, but the OS
+    // preference can flip while the page is open. On change we re-evaluate
+    // WITHOUT a remount — either park the RAF and paint one static frame, or
+    // resume the loop from where it was.
+    const onReduceChange = (e: MediaQueryListEvent) => {
+      reduce = e.matches;
+      if (reduce) {
+        if (raf) {
+          cancelAnimationFrame(raf);
+          raf = 0;
+        }
+        settledState = null;
+        frame(0);
+      } else {
+        sync();
+      }
+    };
+    reduceMq.addEventListener("change", onReduceChange);
+
+    // visibilitychange is always listened to: it stays inert under reduced
+    // motion (shouldRun() short-circuits) but is live the moment the user turns
+    // reduced motion back off mid-session.
+    document.addEventListener("visibilitychange", onVisibility);
     if (reduce) {
       frame(0);
     } else {
-      document.addEventListener("visibilitychange", onVisibility);
       sync();
     }
 
@@ -303,6 +324,7 @@ export function BreathingStar({
       mo.disconnect();
       io.disconnect();
       wakeRef.current = () => {};
+      reduceMq.removeEventListener("change", onReduceChange);
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [size]);
@@ -318,7 +340,10 @@ export function BreathingStar({
     <canvas
       ref={ref}
       role="img"
-      aria-label={`Socrates is ${state === "ended" ? "resting" : state}`}
+      // STABLE label: the orb is Socrates' presence, not a status meter. Phase
+      // changes are narrated once by a dedicated live region on the call surface,
+      // so a label that re-rendered with `state` would double-announce.
+      aria-label="Socrates"
       className={className}
       style={{ width: size, height: size, display: "block" }}
     />

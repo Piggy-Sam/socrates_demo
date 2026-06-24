@@ -261,7 +261,7 @@ function LoginInner() {
                     type="button"
                     onClick={sendReset}
                     disabled={busy}
-                    className="mt-2.5 rounded-sm font-sans text-xs text-marble-dim underline-offset-2 transition-colors hover:text-marble hover:underline disabled:opacity-50"
+                    className="mt-1.5 inline-flex min-h-6 items-center rounded-sm py-1 font-sans text-xs text-marble-dim underline-offset-2 transition-colors hover:text-marble hover:underline disabled:opacity-50"
                   >
                     Forgot password?
                   </button>
@@ -298,7 +298,7 @@ function LoginInner() {
                     <button
                       type="button"
                       onClick={() => switchMode("signup")}
-                      className="rounded-sm text-marble underline-offset-2 transition-colors hover:underline"
+                      className="inline-flex min-h-6 items-center rounded-sm py-1 text-marble underline-offset-2 transition-colors hover:underline"
                     >
                       Create an account
                     </button>
@@ -309,7 +309,7 @@ function LoginInner() {
                     <button
                       type="button"
                       onClick={() => switchMode("signin")}
-                      className="rounded-sm text-marble underline-offset-2 transition-colors hover:underline"
+                      className="inline-flex min-h-6 items-center rounded-sm py-1 text-marble underline-offset-2 transition-colors hover:underline"
                     >
                       Sign in
                     </button>
@@ -322,7 +322,7 @@ function LoginInner() {
                   type="button"
                   onClick={sendMagicLink}
                   disabled={busy}
-                  className="rounded-sm font-sans text-xs text-marble-dim underline-offset-2 transition-colors hover:text-marble hover:underline disabled:opacity-50"
+                  className="inline-flex min-h-6 items-center rounded-sm py-1 font-sans text-xs text-marble-dim underline-offset-2 transition-colors hover:text-marble hover:underline disabled:opacity-50"
                 >
                   Email me a sign-in link instead
                 </button>
@@ -334,7 +334,7 @@ function LoginInner() {
 
       <Link
         href="/"
-        className="absolute left-6 top-6 inline-flex items-center gap-1.5 rounded-sm font-sans text-sm text-marble-dim transition-colors hover:text-marble sm:left-10 sm:top-8"
+        className="absolute left-6 top-6 inline-flex min-h-6 items-center gap-1.5 rounded-sm py-1 font-sans text-sm text-marble-dim transition-colors hover:text-marble sm:left-10 sm:top-8"
       >
         <ArrowLeft strokeWidth={1.6} className="size-4" />
         Back

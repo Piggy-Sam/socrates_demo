@@ -40,7 +40,7 @@ export function AppNav({ displayName }: { displayName?: string | null }) {
                 key={l.href}
                 href={l.href}
                 aria-current={active ? "page" : undefined}
-                className={`label-mono rounded-sm px-2.5 py-1.5 transition-colors ${
+                className={`label-mono inline-flex min-h-10 items-center rounded-sm px-2.5 py-2 transition-colors ${
                   active
                     ? "text-accent"
                     : "text-marble-dim hover:text-marble"
