@@ -9,48 +9,49 @@ import { useReducedMotion } from "motion/react";
 // the first client paint agree — the shuffle and the cycling begin in an effect,
 // after mount.
 //
-// Motion is carried the project way: opacity + scale + a smooth translateY of
-// each row toward its target slot — no per-letter tricks, no new @keyframes
-// (transitions live in-component). Under prefers-reduced-motion we cross-fade in
-// place instead of scrolling the wheel.
+// Motion is carried the project way: opacity + a smooth translateY of each row
+// toward its target slot — no per-letter tricks, no new @keyframes (transitions
+// live in-component). Under prefers-reduced-motion we cross-fade in place.
+//
+// IMPORTANT layout note: the wheel rows are absolutely positioned (so they can
+// slide and wrap infinitely via modulo). An inline-block whose only visible
+// children are absolute collapses to zero width and `overflow-hidden` then clips
+// everything away. So an INVISIBLE in-flow sizer (the current phrase) gives the
+// box its real width + lets the absolute wheel overlay it.
 
-// Many, deliberate, on-brand phrases. Maieutic / the examined life /
-// anti-answer-engine / your-own-cognition. The first entry is the stable SSR
-// anchor before the client shuffle lands.
+// Punchy, on-brand, deliberately varied — maieutic / the examined life /
+// anti-answer-engine / your-own-cognition. Kept short enough to sit inline after
+// the prefix at the tagline scale. The first entry is the stable SSR anchor.
 const PHRASES = [
   "human cognition",
   "your own thinking",
-  "the thought you can't quite name",
-  "your midnight catharsis",
   "your shower thoughts",
+  "your midnight catharsis",
   "the birth of an idea",
   "your half-formed hunches",
-  "the argument with yourself",
   "what you actually believe",
-  "your unfinished reasoning",
   "the examined life",
-  "the question under the question",
   "your 2am clarity",
-  "thinking you can call your own",
-  "the idea you didn't know you were carrying",
   "your better second thought",
-  "the hunch you keep circling back to",
-  "the doubt worth keeping",
+  "the thought you can't name",
+  "your unfinished reasoning",
+  "the argument with yourself",
+  "thinking that stays yours",
+  "the question under it all",
   "your own slow conclusions",
-  "the mind talking to itself",
+  "the hunch you keep circling",
+  "a mind examining itself",
 ] as const;
 
-// Rows rendered above and below the centred phrase (~1.5 each side; we keep 2
-// and let opacity taper the outer ones). More rows than strictly visible keeps
-// the wheel populated through a slide.
+// Rows rendered above and below the centred phrase. We keep 2 each side and let
+// opacity taper the outer ones so the wheel stays populated through a slide.
 const NEIGHBORS = 2;
 const INTERVAL_MS = 4000;
 // Row height in em — must match the rendered line-height so a one-row slide
 // lands the next phrase exactly on centre. We pin both to this value.
 const ROW_EM = 1.6;
 // The masked viewport is taller than one row so the neighbouring phrases above
-// and below are actually visible (~1.5 each side), like a selector wheel. The
-// centre row still sits on the vertical middle, aligned to the fixed prefix.
+// and below are visible (~1.5 each side), like a selector wheel.
 const VIEW_EM = ROW_EM * 3;
 
 // Fisher–Yates, seeded by Math.random at mount (client-only) so SSR and first
@@ -93,9 +94,9 @@ export function PhraseCycler({ className = "" }: { className?: string }) {
     return () => clearInterval(id);
   }, [order.length]);
 
-  // A fixed set of rows, each pinned to an absolute offset around the centre.
-  // As `index` advances, every row recomputes its offset (with wraparound) and
-  // transitions toward it — the whole stack appears to scroll up one notch.
+  // A fixed window of rows around the centre. As `index` advances, every row
+  // recomputes its offset (with wraparound) and transitions toward it — the
+  // whole stack appears to scroll up one notch, infinitely.
   const rows = useMemo(() => {
     const n = order.length;
     const out: { key: number; text: string; offset: number }[] = [];
@@ -105,6 +106,8 @@ export function PhraseCycler({ className = "" }: { className?: string }) {
     }
     return out;
   }, [order, index]);
+
+  const current = order[index];
 
   // Reduced motion: no wheel — show the centred phrase and let opacity cross-
   // fade as `index` changes (key on the text forces a fresh fade-rise).
@@ -116,11 +119,11 @@ export function PhraseCycler({ className = "" }: { className?: string }) {
         aria-live="polite"
       >
         <span
-          key={order[index]}
+          key={current}
           className="block animate-[fade-rise_0.5s_var(--ease-instrument)_both] font-medium text-marble"
           style={{ lineHeight: `${ROW_EM}` }}
         >
-          {order[index]}
+          {current}
         </span>
       </span>
     );
@@ -139,30 +142,36 @@ export function PhraseCycler({ className = "" }: { className?: string }) {
           "linear-gradient(to bottom, transparent 0%, #000 38%, #000 62%, transparent 100%)",
       }}
     >
-      {/* announce only the centred phrase to assistive tech; the wheel rows
-          are decorative duplicates and stay hidden. */}
-      <span className="sr-only" aria-live="polite">
-        {order[index]}
-      </span>
-      {/* the centre line, at the vertical middle of the viewport */}
+      {/* INVISIBLE in-flow sizer — gives the inline-block its real width (= the
+          current phrase) and a non-zero box; without it the all-absolute wheel
+          collapses to 0 width and gets clipped away. */}
       <span
         aria-hidden
-        className="absolute inset-x-0"
+        className="invisible block whitespace-nowrap font-medium"
+        style={{ lineHeight: `${ROW_EM}` }}
+      >
+        {current}
+      </span>
+      {/* announce only the centred phrase to assistive tech */}
+      <span className="sr-only" aria-live="polite">
+        {current}
+      </span>
+      {/* the wheel, centred on the vertical middle of the viewport */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0"
         style={{ top: "50%" }}
       >
         {rows.map((row) => {
           const dist = Math.abs(row.offset);
           const centred = row.offset === 0;
           // taper: full at centre, then fall away with distance.
-          const opacity = centred ? 1 : dist === 1 ? 0.32 : 0.12;
-          const scale = centred ? 1 : dist === 1 ? 0.94 : 0.86;
+          const opacity = centred ? 1 : dist === 1 ? 0.34 : 0.13;
           return (
             <span
               key={row.key}
               className={`absolute inset-x-0 block whitespace-nowrap ${
-                centred
-                  ? "font-medium text-marble"
-                  : "font-light text-marble-dim"
+                centred ? "font-medium text-marble" : "font-light text-marble-dim"
               }`}
               style={{
                 height: `${ROW_EM}em`,
@@ -170,8 +179,7 @@ export function PhraseCycler({ className = "" }: { className?: string }) {
                 // each row sits `offset` rows from centre; -50% pulls its own
                 // half-height back so the centre row is vertically centred.
                 top: 0,
-                transform: `translateY(calc(${row.offset * ROW_EM}em - 50%)) scale(${scale})`,
-                transformOrigin: "left center",
+                transform: `translateY(calc(${row.offset * ROW_EM}em - 50%))`,
                 opacity,
                 transition: armed
                   ? "transform 0.6s var(--ease-instrument), opacity 0.6s var(--ease-instrument)"
