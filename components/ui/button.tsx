@@ -44,14 +44,16 @@ function useJolt(variant: Variant) {
   const onPointerEnter = useCallback(
     (e: React.PointerEvent<HTMLElement>) => {
       if (variant !== "accent" || e.pointerType !== "mouse") return;
-      joltFromEl(e.currentTarget, 0.85);
+      // hover = a strong full-screen wave to guide the eye to the CTA
+      joltFromEl(e.currentTarget, 1.4);
     },
     [variant],
   );
   const onPointerDown = useCallback(
     (e: React.PointerEvent<HTMLElement>) => {
       if (variant !== "accent") return;
-      joltFromEl(e.currentTarget, 1.1);
+      // press/commit = an even bigger wave across the whole viewport
+      joltFromEl(e.currentTarget, 1.9);
     },
     [variant],
   );

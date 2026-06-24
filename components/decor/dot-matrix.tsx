@@ -111,9 +111,13 @@ export function DotMatrix({ className = "", spacing = 30, intensity = 1 }: Props
           if (!reduce) {
             const jolt = sampleJolts(x + off.x, y + off.y, wall);
             if (jolt > 0) {
-              radius += jolt * 2 * e;
-              alpha += jolt * 0.35 * e;
-              colorK = Math.min(1, colorK + jolt * 0.5);
+              // a MASSIVE swell: dots clearly enlarge, brighten, and shift to the
+              // accent as the wavefront passes — but keep the per-dot entropy (e)
+              // so the wave reads organic, not a clean CGI hoop.
+              const ent = 0.55 + 0.9 * e;
+              radius += jolt * 4.6 * ent;
+              alpha += jolt * 0.7 * ent;
+              colorK = Math.min(1, colorK + jolt * 0.85);
             }
           }
           const fa = Math.min(0.85, alpha) * intensity;

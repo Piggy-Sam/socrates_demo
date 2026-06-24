@@ -110,21 +110,37 @@ export function smooth(x: number): number {
 // and the cursor lens. No dot ever moves. Coordinates are in viewport space
 // (clientX/clientY); each canvas converts to its own local space before sampling.
 
-type Jolt = { x: number; y: number; t0: number; strength: number };
+// Each jolt remembers the viewport diagonal at emit time so its wavefront is
+// scaled to reach EVERY screen edge within its life — the impulse is meant to
+// be massive (a full-screen swell), not a small local hoop. `speed`/`width` are
+// derived once at emit (no per-sample window reads in the hot loop).
+type Jolt = {
+  x: number;
+  y: number;
+  t0: number;
+  strength: number;
+  speed: number;
+  width: number;
+};
 
-const JOLT_LIFE = 0.6; // seconds — a jolt is fully spent after ~600ms
-const JOLT_SPEED = 620; // px/s — how fast the ring front expands outward
-const JOLT_WIDTH = 90; // px — thickness of the ring front
+const JOLT_LIFE = 1.5; // seconds — a big wave needs room to cross the screen
+const JOLT_WIDTH_FRAC = 0.42; // wavefront band as a fraction of the diagonal —
+//                               broad swell of dots lights, not a thin hoop
 const JOLT_RING_CAP = 8; // small fixed ring buffer (oldest overwritten)
+const JOLT_DIAG_FALLBACK = 1600; // px, when window dims are unavailable
 
 const jolts: Jolt[] = [];
 let joltHead = 0;
 
 /**
  * Inject an impulse into the shared dot field at viewport coords {x,y}. The
- * canvases pick it up on their next frame and render an expanding ring of
- * energy that fades within ~600ms. A no-op under reduced motion. `strength`
- * (default 1) scales the peak energy.
+ * canvases pick it up on their next frame and render an expanding wave of energy
+ * that sweeps the WHOLE viewport and settles within ~1.5s. A no-op under reduced
+ * motion. `strength` (default 1) scales the peak energy.
+ *
+ * The ring's expansion speed + band width are scaled to the viewport diagonal at
+ * emit time, so the wavefront reaches the far corner just as the jolt expires —
+ * one big swell from the button across the entire screen, on any panel size.
  */
 export function emitJolt({
   x,
@@ -137,7 +153,20 @@ export function emitJolt({
 }): void {
   if (typeof window === "undefined") return;
   if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
-  const j: Jolt = { x, y, t0: performance.now() / 1000, strength };
+  const diag =
+    Math.hypot(window.innerWidth, window.innerHeight) || JOLT_DIAG_FALLBACK;
+  // reach the farthest corner (the full diagonal) within the jolt's life, plus
+  // a margin so the band has fully passed the edge before it expires.
+  const speed = (diag * 1.15) / JOLT_LIFE;
+  const width = diag * JOLT_WIDTH_FRAC;
+  const j: Jolt = {
+    x,
+    y,
+    t0: performance.now() / 1000,
+    strength,
+    speed,
+    width,
+  };
   if (jolts.length < JOLT_RING_CAP) {
     jolts.push(j);
   } else {
@@ -150,7 +179,9 @@ export function emitJolt({
  * Additive jolt energy at a point, 0..1+. `now` is the draw loop's seconds-since-
  * start; `wallNow` is performance.now()/1000 (jolt timestamps are wall-clock so
  * they survive RAF pauses). Each live jolt contributes an expanding-then-fading
- * ring: peak where |dist − speed·age| is small, decaying over the jolt's life.
+ * wavefront: peak where |dist − speed·age| is small, decaying over the jolt's
+ * life. The band is wide (≈half the diagonal) so a broad sweep of dots swells at
+ * once rather than a clean thin hoop.
  */
 export function sampleJolts(x: number, y: number, wallNow: number): number {
   let energy = 0;
@@ -159,10 +190,12 @@ export function sampleJolts(x: number, y: number, wallNow: number): number {
     const age = wallNow - j.t0;
     if (age < 0 || age >= JOLT_LIFE) continue;
     const d = Math.hypot(x - j.x, y - j.y);
-    const front = JOLT_SPEED * age;
-    const ring = smooth(1 - Math.abs(d - front) / JOLT_WIDTH);
+    const front = j.speed * age;
+    const ring = smooth(1 - Math.abs(d - front) / j.width);
     if (ring <= 0) continue;
-    const fade = 1 - age / JOLT_LIFE;
+    // ease-in then ease-out over life: a swell that grows, peaks mid-flight, and
+    // settles back to the chaotic baseline as the front clears the screen.
+    const fade = smooth(Math.sin((age / JOLT_LIFE) * Math.PI));
     energy += j.strength * ring * fade;
   }
   return energy;

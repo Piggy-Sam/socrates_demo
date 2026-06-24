@@ -214,9 +214,13 @@ export function LandingField({ faceId, className = "", spacing = 22 }: Props) {
           if (!reduce) {
             const jolt = sampleJolts(X + off.x, Y + off.y, wall);
             if (jolt > 0) {
-              radius += jolt * 2 * ce;
-              alpha += jolt * 0.35 * ce;
-              mixInto(color, color, lit, Math.min(1, jolt * 0.5));
+              // a MASSIVE swell sweeping the whole field: dots clearly enlarge,
+              // brighten, and shift to the accent — entropy (ce) preserved so the
+              // wave reads organic, not a clean CGI hoop.
+              const ent = 0.55 + 0.9 * ce;
+              radius += jolt * 4.6 * ent;
+              alpha += jolt * 0.7 * ent;
+              mixInto(color, color, lit, Math.min(1, jolt * 0.85));
             }
           }
 
