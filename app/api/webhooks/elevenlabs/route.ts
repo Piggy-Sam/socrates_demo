@@ -114,6 +114,20 @@ function resolveUserId(data: ElevenLabsData): string | undefined {
   return asString(data.user_id) ?? asString(dyn.user_id);
 }
 
+/**
+ * True when this conversation came from a "See demo" session. The voice token
+ * route sets `demo: "1"` in the initiation dynamic_variables, which ElevenLabs
+ * threads back here. We check the canonical dynamic_variables path plus a
+ * top-level fallback, and treat any truthy "1"/"true" as demo. A demo call must
+ * NEVER persist anything to the seeded account.
+ */
+function isDemoEvent(data: ElevenLabsData): boolean {
+  const dyn = data.conversation_initiation_client_data?.dynamic_variables ?? {};
+  const raw =
+    asString(dyn.demo) ?? asString((data as Record<string, unknown>).demo);
+  return raw === "1" || raw === "true";
+}
+
 /** Map ElevenLabs roles to our message roles ("agent" -> "socrates"). */
 function mapRole(role: string | undefined): "user" | "socrates" | null {
   if (role === "user") return "user";
@@ -172,6 +186,14 @@ export async function POST(req: Request) {
   const conversationId = asString(data.conversation_id);
   if (!conversationId) {
     return new NextResponse("missing conversation_id", { status: 400 });
+  }
+
+  // 2.5) Demo gate. A "See demo" voice call carries demo:"1" in its initiation
+  //      dynamic_variables. SKIP ALL persistence — no session insert, no
+  //      messages, no extraction, no pattern detection — so the seeded account
+  //      stays pristine. Ack 200 immediately so ElevenLabs doesn't retry.
+  if (isDemoEvent(data)) {
+    return NextResponse.json({ ok: true, demo: true });
   }
 
   // 3) Dedupe — ElevenLabs retries; never reprocess.

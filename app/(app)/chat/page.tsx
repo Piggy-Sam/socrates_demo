@@ -18,7 +18,7 @@ export default async function ChatPage({
 }: {
   searchParams: Promise<{ from?: string; fromCall?: string }>;
 }) {
-  const { userId, profile } = await requireProfile();
+  const { userId, profile, isDemo } = await requireProfile();
   const { from, fromCall } = await searchParams;
 
   let seed: string | null = null;
@@ -31,6 +31,7 @@ export default async function ChatPage({
       initialTurns={[]}
       initialSessionId={null}
       seed={seed}
+      isDemo={isDemo}
     />
   );
 }

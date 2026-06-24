@@ -36,6 +36,10 @@ export type VoiceTokenResponse = {
      * first-message is "{{first_message}}", so this becomes Socrates' first line. */
     first_message: string;
     recent_thread?: string;
+    /** "1" in a "See demo" session. Threaded back to us by the post-call webhook
+     * (in conversation_initiation_client_data.dynamic_variables) so it can SKIP
+     * all persistence — a demo voice call must never write to the seeded account. */
+    demo?: string;
   };
 };
 
@@ -133,6 +137,9 @@ export async function POST() {
     display_name: displayName,
     first_message: firstMessage,
     ...(recentThread ? { recent_thread: recentThread } : {}),
+    // Demo: mark the session so the post-call webhook skips ALL persistence. RAG
+    // and the personalized opener still use the seeded data (reads are allowed).
+    ...(user.isDemo ? { demo: "1" } : {}),
   };
 
   return NextResponse.json(

@@ -6,7 +6,7 @@
 // { ok, content }.
 
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getAuthIdentity } from "@/lib/auth";
 import { db } from "@/lib/db/client";
 import { summaries } from "@/lib/db/schema";
 import { generateRecap, weekStart } from "@/lib/recap/generate";
@@ -14,8 +14,8 @@ import { generateRecap, weekStart } from "@/lib/recap/generate";
 export const runtime = "nodejs";
 
 export async function POST() {
-  const user = await getCurrentUser();
-  if (!user) {
+  const identity = await getAuthIdentity();
+  if (!identity) {
     return NextResponse.json({ ok: false, error: "Not signed in." }, {
       status: 401,
     });
@@ -24,7 +24,9 @@ export async function POST() {
   const now = new Date();
   const start = weekStart(now);
 
-  const result = await generateRecap(user.id, start, now);
+  // RUN the generation in demo too (the visitor sees a fresh recap rendered in
+  // place by the client); only the persistence below is skipped.
+  const result = await generateRecap(identity.userId, start, now);
   if (!result.ok) {
     return NextResponse.json(
       { ok: false, error: result.error },
@@ -32,17 +34,21 @@ export async function POST() {
     );
   }
 
-  try {
-    await db.insert(summaries).values({
-      userId: user.id,
-      kind: "weekly",
-      periodStart: start,
-      periodEnd: now,
-      content: result.content,
-    });
-  } catch (err) {
-    // Persisting is best-effort; still hand the recap back to the user.
-    console.error("[recap/generate] insert failed", err);
+  // Demo: read-only — never insert a summaries row. The client shows the freshly
+  // generated content; a refresh returns to the pristine seeded recaps.
+  if (!identity.isDemo) {
+    try {
+      await db.insert(summaries).values({
+        userId: identity.userId,
+        kind: "weekly",
+        periodStart: start,
+        periodEnd: now,
+        content: result.content,
+      });
+    } catch (err) {
+      // Persisting is best-effort; still hand the recap back to the user.
+      console.error("[recap/generate] insert failed", err);
+    }
   }
 
   return NextResponse.json({ ok: true, content: result.content });

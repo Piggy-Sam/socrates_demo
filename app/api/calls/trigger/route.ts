@@ -8,7 +8,7 @@
 
 import { NextResponse } from "next/server";
 import { desc, eq } from "drizzle-orm";
-import { getCurrentUser, getProfile } from "@/lib/auth";
+import { getAuthIdentity, getProfile } from "@/lib/auth";
 import { db } from "@/lib/db/client";
 import { entries } from "@/lib/db/schema";
 import { startOutboundCall } from "@/lib/elevenlabs/calls";
@@ -36,15 +36,26 @@ async function recentThread(userId: string): Promise<string> {
 }
 
 export async function POST() {
-  const user = await getCurrentUser();
-  if (!user) {
+  const identity = await getAuthIdentity();
+  if (!identity) {
     return NextResponse.json(
       { ok: false, error: "You need to be signed in to start a call." },
       { status: 401 },
     );
   }
 
-  const profile = await getProfile(user.id);
+  // Demo: NEVER place a real outbound call — it would ring the real phone on the
+  // seeded profile. Return a calm, non-error response the UI can show as an info
+  // note (200 so the client doesn't render a failure), pointing to "Talk now".
+  if (identity.isDemo) {
+    return NextResponse.json({
+      ok: false,
+      demo: true,
+      error: "Calls are off in the demo — try Talk now instead.",
+    });
+  }
+
+  const profile = await getProfile(identity.userId);
   if (!profile) {
     return NextResponse.json(
       { ok: false, error: "Finish onboarding first, then I can call you." },
@@ -66,15 +77,15 @@ export async function POST() {
 
   const displayName = profile.displayName?.trim() || "there";
   const [recent, firstMessage] = await Promise.all([
-    recentThread(user.id),
-    generateOpener(user.id, "call", displayName),
+    recentThread(identity.userId),
+    generateOpener(identity.userId, "call", displayName),
   ]);
 
   try {
     const result = await startOutboundCall({
       toNumber,
       dynamicVariables: {
-        user_id: user.id,
+        user_id: identity.userId,
         display_name: displayName,
         recent_thread: recent,
         first_message: firstMessage,

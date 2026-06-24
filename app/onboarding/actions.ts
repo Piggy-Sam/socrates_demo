@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db/client";
 import { profiles } from "@/lib/db/schema";
-import { getCurrentUser } from "@/lib/auth";
+import { getAuthIdentity } from "@/lib/auth";
 
 /** Normalize a phone number to a basic E.164 form (+ followed by digits). */
 function toE164(raw: string): string | null {
@@ -49,8 +49,8 @@ export async function upsertProfile(
   _prev: OnboardingState,
   formData: FormData,
 ): Promise<OnboardingState> {
-  const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  const identity = await getAuthIdentity();
+  if (!identity) redirect("/login");
 
   const parsed = ProfileSchema.safeParse({
     displayName: formData.get("displayName"),
@@ -63,12 +63,18 @@ export async function upsertProfile(
     return { error: parsed.error.issues[0]?.message ?? "Something's off." };
   }
 
+  // Demo: read-only. Validate (so the form still gives feedback) but NEVER write
+  // — the seeded profile must not change. Same success path: on to /today.
+  if (identity.isDemo) {
+    redirect("/today");
+  }
+
   const { displayName, timezone, dailyCallTime, phoneE164 } = parsed.data;
 
   await db
     .insert(profiles)
     .values({
-      id: user.id,
+      id: identity.userId,
       displayName,
       timezone,
       dailyCallTime,
