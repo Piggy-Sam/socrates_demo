@@ -50,7 +50,7 @@ const LOOP = [
 
 export default function Home() {
   return (
-    <main className="relative flex flex-col">
+    <main className="relative flex flex-col overflow-x-hidden">
       {/* one unified field: ambient dots + the face emerging at #hero-face */}
       <div className="fixed inset-0 -z-10">
         <LandingField faceId="hero-face" />
@@ -100,8 +100,9 @@ export default function Home() {
             {/* the tagline: a fixed prefix + the vertical phrase wheel, on one
                 baseline. Type scale matches the old two-line h1 exactly so the
                 hero doesn't reflow when this swapped in. */}
-            <h1 className="mt-7 max-w-full font-display text-xl font-light leading-relaxed tracking-tight text-marble-dim animate-[fade-rise_0.7s_var(--ease-instrument)_0.1s_both] sm:text-[1.7rem]">
-              <span className="flex flex-nowrap items-center justify-center gap-x-[0.6em] whitespace-nowrap lg:justify-start">
+            <h1 className="mt-6 max-w-full font-display text-base font-light leading-relaxed tracking-tight text-marble-dim animate-[fade-rise_0.7s_var(--ease-instrument)_0.1s_both] sm:mt-7 sm:text-2xl lg:text-[1.7rem]">
+              {/* on phones it wraps (prefix above, wheel below); one line from sm up */}
+              <span className="flex flex-wrap items-center justify-center gap-x-[0.6em] sm:flex-nowrap sm:whitespace-nowrap lg:justify-start">
                 <span className="whitespace-nowrap text-marble-dim">
                   The midwife for
                 </span>

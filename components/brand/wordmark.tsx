@@ -63,7 +63,8 @@ const TEXT = {
   sm: "text-sm",
   md: "text-lg",
   lg: "text-2xl sm:text-3xl",
-  xl: "text-4xl sm:text-6xl",
+  // xl is the landing hero only — keep it from overflowing narrow phones
+  xl: "text-[1.6rem] sm:text-5xl lg:text-6xl",
 } as const;
 
 const MARK = { sm: 18, md: 24, lg: 40, xl: 64 } as const;
