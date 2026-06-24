@@ -111,8 +111,10 @@ export default function Home() {
                 baseline. Type scale matches the old two-line h1 exactly so the
                 hero doesn't reflow when this swapped in. */}
             <h1 className="mt-7 max-w-full font-display text-xl font-light leading-relaxed tracking-tight text-marble-dim animate-[fade-rise_0.7s_var(--ease-instrument)_0.1s_both] sm:text-[1.7rem]">
-              <span className="flex flex-wrap items-center justify-center gap-x-[0.6em] lg:justify-start">
-                <span className="text-marble-dim">The midwife for</span>
+              <span className="flex flex-nowrap items-center justify-center gap-x-[0.6em] whitespace-nowrap lg:justify-start">
+                <span className="whitespace-nowrap text-marble-dim">
+                  The midwife for
+                </span>
                 <PhraseCycler />
               </span>
             </h1>
