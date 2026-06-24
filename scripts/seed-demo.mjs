@@ -1,16 +1,27 @@
-// Comprehensive, idempotent DEMO seed for a single user. Wipes that user's bank
+// Curated, idempotent DEMO seed for a single user. Wipes that user's bank
 // (patterns, summaries, themes, entries, messages, sessions — NOT the auth user)
-// and rebuilds a rich, lived-in dataset: ~10 sessions of real Socratic dialogue,
-// ~50 first-person embedded entries across recurring threads, aggregated themes,
-// daily distillations, weekly recaps, and surfaced patterns. Designed to make a
-// LIVE investor demo of "track + resurface past cognition" land.
+// and rebuilds a tight, lived-in dataset: ~11 sessions of real Socratic dialogue,
+// ~40 first-person embedded entries across recurring threads, aggregated themes,
+// daily distillations, weekly recaps, and surfaced patterns.
+//
+// This dataset is shown to COMPETITION JUDGES via "See demo". Every surface leads
+// with whatever is NEWEST, so the data is curated so the most-recent items are the
+// strongest and most thesis-aligned. The pitch thesis the dataset is built to land:
+//   AI agency isn't an override button — it's whether you still think.
+//   Socrates AI is a midwife for cognition: it sharpens your thinking instead of
+//   replacing it.
+// Persona: Yancun, Singapore, fresh out of national service, building Socrates AI;
+// preoccupied with AI & education, his own direction, and wide society/science
+// takes (~60% ideas/work : 40% personal). Older items are lighter, genuine texture;
+// the most recent ~week is the sharpest, most quotable, most pitch-aligned content.
 //
 // This is DESTRUCTIVE for the target user and is meant to be re-run safely
 // (delete-then-seed). It does real OpenAI embedding calls and writes to the DB.
 //
 // Usage:
 //   node scripts/seed-demo.mjs [userId]
-//     userId defaults to the demo user below; must be a UUID if provided.
+//     userId defaults to DEMO_USER_ID env, then the demo user below; pass an
+//     explicit UUID to seed the owner's account instead. Must be a UUID.
 //
 // Requires .env.local with:
 //   DATABASE_URL          (Supabase pooler url; we derive the SESSION url, :5432)
@@ -27,7 +38,12 @@ import OpenAI from "openai";
 process.loadEnvFile?.(".env.local");
 
 // ── target user + guards ─────────────────────────────────────────────────────
-const USER_ID = process.argv[2] || "c996ad01-7f17-4c11-8c1d-d65baf4249e3";
+// Seeds either the demo account (DEMO_USER_ID env / default below) or the
+// owner's account (pass the uuid as argv[2]). Same script, two destinations.
+const USER_ID =
+  process.argv[2] ||
+  process.env.DEMO_USER_ID ||
+  "c996ad01-7f17-4c11-8c1d-d65baf4249e3";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -62,7 +78,7 @@ console.log("seed-demo — about to do the following:");
 console.log(`  • target user: ${USER_ID}`);
 console.log("  • DELETE all of that user's patterns/summaries/themes/entries/messages/sessions");
 console.log("  • UPDATE (or insert) the profile: display_name=Yancun, tz=Asia/Singapore, daily_call_time=21:00 (phone preserved)");
-console.log("  • SEED ~10 sessions, ~50 entries (embedded), themes, daily summaries, weekly recaps, patterns");
+console.log("  • SEED ~11 sessions, ~40 entries (embedded), themes, daily summaries, weekly recaps, patterns");
 console.log("  • embedding model:", EMB_MODEL);
 console.log("");
 
@@ -314,57 +330,6 @@ const SESSIONS = [
     ],
   },
   {
-    key: "s5",
-    convId: "seed-05",
-    type: "on_demand_voice",
-    daysAgo: 17,
-    hour: 16,
-    durMin: 11,
-    turns: [
-      turn("agent", "What's on the table?", 1),
-      turn(
-        "user",
-        "I want to argue about climate, but not the usual way. I'm sick of the doom and I'm sick of the techno-optimist 'just build reactors bro' thing too. Both feel like vibes.",
-        18,
-      ),
-      turn(
-        "agent",
-        "Then let's not do vibes. Pick the actual claim you want to defend. 'Degrowth is a dead end,' 'nuclear is non-negotiable,' something with an edge I can push on.",
-        34,
-      ),
-      turn(
-        "user",
-        "Okay: I think degrowth is morally serious but politically a fantasy, and that the honest path is abundance — make clean energy so cheap that decarbonizing is the path of least resistance, not a sacrifice you have to guilt people into.",
-        56,
-      ),
-      turn(
-        "agent",
-        "That's a position with teeth. The strongest counter, so you don't get to keep it for free: 'cheap and abundant' is exactly the story we told about fossil fuels, and abundance drove consumption through the roof — Jevons paradox. Cheap clean energy might just mean we use vastly more of everything. Why doesn't that sink your view?",
-        84,
-      ),
-      turn(
-        "user",
-        "Because the thing we're trying to cut is emissions, not energy use. If the abundant energy is clean, then more of it isn't the problem — using more clean kWh to desalinate water or run direct air capture is fine. Jevons is a problem when the cheap thing is dirty.",
-        112,
-      ),
-      turn(
-        "agent",
-        "Decent rebuttal. But land use, materials, mining for all that capacity — the footprint isn't only carbon. Are you smuggling 'clean' as if it means 'free of all consequence'?",
-        134,
-      ),
-      turn(
-        "user",
-        "Yeah, I am, a bit. I should say it narrower. Abundance solves the CARBON problem and creates new, smaller problems I'd rather have. Mining lithium is a worse trade than burning coal? I don't buy it. But I shouldn't pretend the trade is zero.",
-        160,
-      ),
-      turn(
-        "agent",
-        "That's the honest version of your view, and it's stronger for the concession. You went from a slogan to a position you could actually defend to someone who disagrees. Good place to stop.",
-        180,
-      ),
-    ],
-  },
-  {
     key: "s6",
     convId: null,
     type: "chat",
@@ -510,54 +475,47 @@ const SESSIONS = [
       ),
     ],
   },
+  // ── Week 1 (most recent) ───────────────────────────────────────────────────
+  // A quiet personal chat, recent enough to anchor the /chat sidebar's older
+  // texture; the flagship chat (s13) is newer still.
   {
-    key: "s9",
+    key: "s9b",
     convId: null,
     type: "chat",
-    daysAgo: 7,
-    hour: 22,
-    durMin: 14,
+    daysAgo: 4,
+    hour: 23,
+    durMin: 11,
     turns: [
       turn(
         "user",
-        "A friend and I are drifting. We don't fight, we just text less, and the texts got logistical. 'You alive?' 'Haha yeah busy.' I don't know if I should make it a thing or let it be.",
+        "Three weeks of treating rest like something I have to earn and I'm cracking. I work until I'm useless and call it discipline.",
         0,
       ),
       turn(
         "agent",
-        "Before the should — what do you actually want here? Not what a good friend is supposed to do. What you want.",
+        "When did rest become a thing to earn rather than a thing you need? Was there a moment, or did it creep?",
       ),
       turn(
         "user",
-        "I want the version of us where we'd talk for three hours about nothing. But I also know people change and maybe that version is just over and I'm being sentimental.",
+        "Crept. Somewhere I started believing the guilt was proof I cared. If I'm not anxious about working, I must not be serious.",
         0,
       ),
       turn(
         "agent",
-        "Two real possibilities, and you've stated both fairly. Here's a distinction that might help: is the three-hours-about-nothing thing gone because YOU two changed, or because the conditions changed — you had endless time in JC and now you don't? Those have very different prognoses.",
+        "So the anxiety isn't a side effect of caring — you've made it the evidence FOR it. Notice what that does: it means resting can't ever feel allowed, because the absence of guilt would read as not caring. Is that a system you'd design for someone you wanted to last?",
       ),
       turn(
         "user",
-        "...conditions, mostly. We're both just busy and tired. When we do talk it's still good. It's just rare.",
+        "No. I'd tell them they're confusing the smoke for the fire. The dread before deep work lifts the second I start — the dread is about starting, not the work. I should stop fighting the start and start fighting the not-resting.",
         0,
       ),
       turn(
         "agent",
-        "Then the friendship may not be drifting — the SURFACE for it disappeared. You lost the empty afternoons, not each other. That's a logistics problem wearing the costume of an emotional one. What's the smallest thing that would test whether the good is still there when you make the surface on purpose?",
-      ),
-      turn(
-        "user",
-        "Just call him. Not text. A real call, on a walk, no agenda. If it's still three hours, I have my answer. If it's awkward, I have a different answer.",
-        0,
-      ),
-      turn(
-        "agent",
-        "Then you don't have a decision to agonize over — you have an experiment to run. Let the call tell you, not the worrying.",
+        "Then you already know which fight is real. The start was never the enemy. What's the smallest rest this week you'd let yourself take without filing a justification for it?",
       ),
     ],
   },
-
-  // ── Week 1 (most recent): keep /today and the current week populated ───────
+  // ── 2 days ago: the month-long thread becomes a DEFINITION + design rule. ───
   {
     key: "s10",
     convId: "seed-10",
@@ -566,10 +524,10 @@ const SESSIONS = [
     hour: 21,
     durMin: 15,
     turns: [
-      turn("agent", "You've been on this AI-and-learning thread for a month. Tonight, not the diagnosis — what do you actually think genuine learning IS, if you had to build for it?", 3),
+      turn("agent", "You've been on this AI-and-thinking thread for a month. Tonight, not the diagnosis — what do you actually think genuine thinking IS, if you had to build for it?", 3),
       turn(
         "user",
-        "I think genuine learning is when your model of something changes and you can FEEL the change. There's a click. Before, a thing confused you; after, it's obvious and you can't even reconstruct your old confusion. AI can hand you the answer, but it can't hand you the click. The click only happens if you carried the confusion yourself.",
+        "I think genuine thinking is when your model of something changes and you can FEEL the change. There's a click. Before, a thing confused you; after, it's obvious and you can't even reconstruct your old confusion. AI can hand you the answer, but it can't hand you the click. The click only happens if you carried the confusion yourself.",
         32,
       ),
       turn(
@@ -604,16 +562,17 @@ const SESSIONS = [
       ),
       turn(
         "agent",
-        "That's a real, shippable change that comes straight from your own definition of learning. You came in with a diagnosis and you're leaving with a design rule. We can stop.",
+        "That's a real, shippable change that comes straight from your own definition. You came in with a diagnosis and you're leaving with a design rule. We can stop.",
         210,
       ),
     ],
   },
+  // ── Yesterday: a small, useless-on-purpose joy (light texture, recent). ────
   {
     key: "s11",
     convId: "seed-11",
     type: "on_demand_voice",
-    daysAgo: 0,
+    daysAgo: 1,
     hour: 11,
     durMin: 8,
     turns: [
@@ -650,104 +609,228 @@ const SESSIONS = [
       ),
     ],
   },
+  // ── TODAY (most recent): the FLAGSHIP call — agency ⇄ thinking, named. ──────
+  // The newest voice session: a strong decision + a pointed question surface,
+  // Socrates pressing and naming the assumption, never answering or flattering.
+  // A daily summary (DAILY daysAgo:0) is matched to it via source_session_ids.
+  {
+    key: "s12",
+    convId: "seed-12",
+    type: "scheduled_call",
+    daysAgo: 0,
+    hour: 21,
+    durMin: 16,
+    turns: [
+      turn("agent", "You sound wound up. What happened today?", 2),
+      turn(
+        "user",
+        "Watched a classmate defend an essay he didn't write. Not 'AI helped me' — he was arguing FOR a thesis, with conviction, and he couldn't tell me why the second paragraph followed from the first. He believed it. He just never did the believing himself. The model did, and he inherited the confidence without the reasons.",
+        24,
+      ),
+      turn(
+        "agent",
+        "You keep landing on the confidence. Why is the inherited confidence the part that disturbs you, more than the inherited words?",
+        42,
+      ),
+      turn(
+        "user",
+        "Because words you can check. Confidence you can't. He'll walk into the next room sure of something he never thought through, and there's no seam — no edge where you can see the join between what he reasoned and what he borrowed. That's the thing that scares me about all of it. AI doesn't make people wrong. It makes them certain without the work that earns certainty.",
+        70,
+      ),
+      turn(
+        "agent",
+        "Let me name the assumption hiding in that. You're treating 'did the reasoning yourself' as the thing that makes a belief yours. But people inherit beliefs from teachers, books, parents — most of what any of us holds, we didn't derive. So what's actually different when the source is a model?",
+        98,
+      ),
+      turn(
+        "user",
+        "...okay, that's fair. The difference is — a book doesn't adapt to flatter me. A teacher pushes back. The model gives me the most confident version of whatever I already leaned toward, instantly, with no friction and no resistance. It's not that I borrowed a belief. It's that I borrowed one perfectly shaped to feel like mine, so I never notice I'm holding it.",
+        130,
+      ),
+      turn(
+        "agent",
+        "So the real worry isn't offloading the work. It's that the tool removes the resistance that used to tell you a belief wasn't yet yours. The friction WAS the signal. Now say the thing you're circling: what's the actual question under a month of this?",
+        158,
+      ),
+      turn(
+        "user",
+        "Whether you still think. That's it. The whole thing reduces to one test: after the tool, do you still think — or do you just arrive at conclusions? Agency was never about whether AI can act for you. It's about whether you're still the one doing the thinking, or whether you've quietly handed it over and kept the feeling of having thought.",
+        188,
+      ),
+      turn(
+        "agent",
+        "Then you have your line, and it's a hard one to live by, not just say. You're building a tool in the same category as the one you're indicting. So the question turns on you: does Socrates make people still think — or does it just hand them a better-feeling conclusion?",
+        216,
+      ),
+      turn(
+        "user",
+        "It has to fail the easy way to pass the real one. It has to be willing to be less satisfying than the thing that just answers you. I'm deciding that's the line I won't cross: it never hands you the conclusion. It makes you do the last step yourself, even when handing it over would feel kinder. The day it answers for you to be liked, it's become the disease.",
+        248,
+      ),
+      turn(
+        "agent",
+        "That's a decision with a cost attached, which is the only kind worth keeping. Write it down before the wanting-to-be-liked talks you out of it. We can stop.",
+        268,
+      ),
+    ],
+  },
+  // ── TODAY: the flagship chat thread — titles the /chat sidebar at the top. ─
+  {
+    key: "s13",
+    convId: null,
+    type: "chat",
+    daysAgo: 0,
+    hour: 22,
+    durMin: 9,
+    turns: [
+      turn(
+        "user",
+        "If a tool makes you smarter but you stop being able to think without it, did it make you smarter or just dependent?",
+        0,
+      ),
+      turn(
+        "agent",
+        "Depends what you mean by 'smarter.' Pick one: smarter is being able to produce good answers, or smarter is being able to produce them WHEN THE TOOL ISN'T THERE? Those split exactly on the case you're describing.",
+      ),
+      turn(
+        "user",
+        "The second. Obviously the second. A calculator made us faster but we can still reason about quantity. This feels different — like outsourcing the reasoning itself, not the arithmetic.",
+        0,
+      ),
+      turn(
+        "agent",
+        "Test that. The calculator outsourced a step you'd already mastered — you learned long division first, then handed it off. What if the order reverses, and someone outsources the reasoning BEFORE they ever built it? Is that the same trade, or a different one?",
+      ),
+      turn(
+        "user",
+        "Different. Completely different. The calculator is a tool for someone who can already do the thing. This is a tool that means you never have to learn to do the thing. You can't outsource a muscle you never grew. That's the whole distinction — augmentation needs a base to augment.",
+        0,
+      ),
+      turn(
+        "agent",
+        "Then you've found your own dividing line, and it's sharper than 'AI good / AI bad.' Where does that leave the thing you're building? Which side of your own line does Socrates have to stay on?",
+      ),
+      turn(
+        "user",
+        "It has to be the kind that grows the muscle, not the kind that replaces it. Every feature is a fork: does this make them stronger without it, or weaker without it? If a feature makes someone need me more, I've built the wrong thing. That's the test now. Strengthen, or I cut it.",
+        0,
+      ),
+      turn(
+        "agent",
+        "Then you don't have a feature backlog — you have a single question to hold every feature against. Keep asking it out loud. The day it gets inconvenient is the day it matters most.",
+      ),
+    ],
+  },
 ];
 
-// ── entries: ~50, all first-person, the PERSON's own words ───────────────────
+// ── entries: ~40, all first-person, the PERSON's own words ───────────────────
 // `s` links to a session key; `daysAgo` dates it. Themes are lowercase.
+//
+// CURATION: the flagship theme is "ai & agency" — it RECURS across the whole
+// month so it dominates the /bank field (highest entry_count). The NEWEST
+// entries (daysAgo:0) are the single sharpest, most quotable thesis lines:
+//   • newest decision/opinion = agency ⇄ thinking, the most pitch-aligned line
+//   • newest question = a pointed thesis question
+// Order within the array is roughly oldest → newest by section; daysAgo is what
+// actually dates each row, so /today and /bank key off recency correctly.
 const ENTRIES = [
-  // ---- AI & EDUCATION (flagship) — evolving across weeks ----
-  { s: "s1", daysAgo: 26, type: "observation", themes: ["ai & learning"], content: "The sharp ones offloaded the reflection essay too. Not the lazy ones — the people I think can actually think. They just didn't see the point of doing it themselves." },
-  { s: "s1", daysAgo: 26, type: "feeling", themes: ["ai & learning"], content: "There's no error message when you stop thinking. The output looks fine. That's the part that scares me." },
-  { s: "s1", daysAgo: 26, type: "idea", themes: ["ai & learning", "writing"], content: "I never know what I believe until I've tried to put it in a sentence and watched it fall apart. That's the thing the essay was a proxy for, and it's the part that gets quietly deleted." },
-  { s: "s4", daysAgo: 19, type: "opinion", themes: ["ai & learning", "incentives"], content: "The grade isn't the disease. The grade is the symptom. The disease is that we made school a game where the winning move is to LOOK like you learned, not to learn." },
-  { s: "s4", daysAgo: 19, type: "idea", themes: ["ai & learning", "incentives"], content: "AI is the most efficient solvent for a bond that was already weak. If the only thing holding you to real thinking was friction, and the friction goes to zero, of course it dissolves." },
-  { s: "s4", daysAgo: 19, type: "question", themes: ["ai & learning"], content: "Do I actually believe the bleak version — that the bond to real thinking was only ever friction — or did I just get carried by the momentum of my own argument?" },
-  { s: "s10", daysAgo: 2, type: "idea", themes: ["ai & learning"], content: "Genuine learning is when your model changes and you can FEEL the change. There's a click. AI can hand you the answer but it can't hand you the click — the click only happens if you carried the confusion yourself." },
-  { s: "s10", daysAgo: 2, type: "idea", themes: ["ai & learning", "the product"], content: "Don't withhold answers — that's just sadistic. The move is to make the GAP visible and let them sit in it long enough to want to close it themselves. Most tools rush to close the gap. The good one reveals it." },
-  { s: "s10", daysAgo: 2, type: "decision", themes: ["ai & learning", "the product"], content: "An instrument, not an oracle. It doesn't give you the click — it makes the gap where the click can happen. That's the whole thing. Write it on the wall." },
+  // ---- AI & AGENCY (flagship) — the month-long thread, oldest → newest ----
+  { s: "s1", daysAgo: 26, type: "observation", themes: ["ai & agency", "education"], content: "The sharp ones offloaded the reflection essay too. Not the lazy ones — the people I think can actually think. They just didn't see the point of doing it themselves." },
+  { s: "s1", daysAgo: 26, type: "feeling", themes: ["ai & agency"], content: "There's no error message when you stop thinking. The output looks fine. That's the part that scares me." },
+  { s: "s1", daysAgo: 26, type: "idea", themes: ["ai & agency", "writing"], content: "I never know what I believe until I've tried to put it in a sentence and watched it fall apart. That's the thing the essay was a proxy for, and it's the part that gets quietly deleted." },
+  { s: "s4", daysAgo: 19, type: "opinion", themes: ["ai & agency", "education", "incentives"], content: "The grade isn't the disease. The grade is the symptom. The disease is that we made school a game where the winning move is to LOOK like you learned, not to learn." },
+  { s: "s4", daysAgo: 19, type: "idea", themes: ["ai & agency", "incentives"], content: "AI is the most efficient solvent for a bond that was already weak. If the only thing holding you to real thinking was friction, and the friction goes to zero, of course it dissolves." },
+  { s: "s4", daysAgo: 19, type: "feeling", themes: ["ai & agency", "education"], content: "Quiet alarm: a whole generation getting fluent at SOUNDING smart while getting worse at thinking. And no one will feel it happen, because sounding smart is exactly the thing that hides it." },
+  { s: "s10", daysAgo: 2, type: "idea", themes: ["ai & agency", "the product"], content: "Genuine thinking is when your model changes and you can FEEL the change. There's a click. AI can hand you the answer but it can't hand you the click — the click only happens if you carried the confusion yourself." },
+  { s: "s10", daysAgo: 2, type: "idea", themes: ["ai & agency", "the product"], content: "Don't withhold answers — that's just sadistic. The move is to make the GAP visible and let them sit in it long enough to want to close it themselves. Most tools rush to close the gap. The good one reveals it." },
+  { s: "s10", daysAgo: 2, type: "decision", themes: ["ai & agency", "the product"], content: "An instrument, not an oracle. It doesn't give you the click — it makes the gap where the click can happen. That's the whole thing. Write it on the wall." },
+  // ---- the NEWEST agency entries (daysAgo:0) — the sharpest, most quotable ----
+  // `min` (minutes past 20:00 today) curates the within-day order so the single
+  // sharpest agency⇄thinking DECISION (min:50) is the newest row overall — it
+  // leads /today's "Lately, in your own words" and the /bank field. The pointed
+  // thesis QUESTION (min:45) leads /today's "Still open".
+  { s: "s13", daysAgo: 0, min: 10, type: "idea", themes: ["ai & agency"], content: "The calculator outsourced a step we'd already mastered — long division first, then hand it off. The danger is reversing the order: outsourcing the reasoning BEFORE you ever build it. That's not augmentation, that's never learning to do the thing." },
+  { s: "s12", daysAgo: 0, min: 20, type: "observation", themes: ["ai & agency", "education"], content: "Watched a classmate defend an essay he didn't write — arguing for a thesis with real conviction, unable to say why the second paragraph followed from the first. AI doesn't make people wrong. It makes them certain without the work that earns certainty." },
+  { s: "s12", daysAgo: 0, min: 30, type: "idea", themes: ["ai & agency"], content: "A book doesn't adapt to flatter you; a teacher pushes back. The model hands you the most confident version of whatever you already leaned toward — a belief shaped to feel like yours, so you never notice you're holding it. The friction WAS the signal." },
+  // newest CHAT-derived decision (s13): augment vs. replace
+  { s: "s13", daysAgo: 0, min: 40, type: "decision", themes: ["ai & agency", "the product"], content: "Every feature is a fork: does this make someone stronger without me, or weaker without me? You can't outsource a muscle you never grew — augmentation needs a base to augment. If a feature makes someone need me more, I've built the wrong thing. Strengthen, or I cut it." },
+  // newest QUESTION = the pointed thesis question (titles /today "Still open")
+  { s: "s12", daysAgo: 0, min: 45, type: "question", themes: ["ai & agency", "the product"], content: "Does Socrates make people still think — or does it just hand them a better-feeling conclusion? If it ever answers for you to be liked, it has become the exact disease it was built to treat." },
+  // newest DECISION = the single sharpest agency ⇄ thinking line (leads /today)
+  { s: "s12", daysAgo: 0, min: 50, type: "decision", themes: ["ai & agency", "the product"], content: "AI agency was never about whether the machine can act for you. It's whether you still think — or whether you've quietly handed it over and kept the feeling of having thought. The line I won't cross: it never hands you the conclusion. It makes you take the last step yourself, even when handing it over would feel kinder." },
 
   // ---- HIS OWN DIRECTION ----
   { s: "s2", daysAgo: 24, type: "feeling", themes: ["direction"], content: "ORD is coming and everyone asks what I'm doing after. I keep saying 'building something' and when I say it out loud it sounds like a cope." },
   { s: "s2", daysAgo: 24, type: "decision", themes: ["direction", "the product"], content: "My bar for whether this was worth it: one real person, who isn't my mum, uses it and it changes how they think. Not money, not a title, not user counts. One mind that moved." },
-  { s: "s2", daysAgo: 24, type: "feeling", themes: ["direction", "ambition"], content: "I'd be lying if part of me didn't also want it to look impressive to the people I went to JC with. I want the noble bar to be the real one. I'm not certain it always is." },
   { s: "s7", daysAgo: 11, type: "feeling", themes: ["direction", "ambition", "integrity"], content: "The thing I'm most afraid of in other people — optimizing for the legible fake over the real thing — is the thing I have the most power to do myself. The only real defense is that I'd know I was doing it." },
-  { s: "s9", daysAgo: 7, type: "feeling", themes: ["direction", "impostor"], content: "Some mornings the whole thing feels like a kid playing founder. Then someone says one true sentence back to me from a call and I remember it's real. The impostor feeling is loudest right before it's least true." },
   { s: null, daysAgo: 13, type: "question", themes: ["direction"], content: "Is the 'safer path' actually safer, or just more legible to other people? A salaried job I'd resent is not the low-variance option it looks like." },
   { s: null, daysAgo: 21, type: "opinion", themes: ["direction", "ambition"], content: "Ambition without a clear idea of what 'enough' looks like is just a treadmill someone else built. I want ambition pointed at a thing, not at being seen as ambitious." },
+  { s: null, daysAgo: 8, type: "observation", themes: ["direction"], content: "The case-comp judges gave it to the deck with the cleaner growth chart. Ours was the only one questioning whether the metric meant anything. I keep replaying it — not because we deserved to win, but because 'looks rigorous' beat 'is rigorous' in the room, again." },
 
   // ---- BUILDING SOCRATES AI ----
   { s: "s7", daysAgo: 11, type: "idea", themes: ["the product", "anti-metric"], content: "The success metric is invisible to the people who'd fund it. If it's working you need it LESS over time, not more. Built for its own obsolescence is the worst possible thing to put on a pitch deck and the truest thing about it." },
   { s: "s7", daysAgo: 11, type: "idea", themes: ["the product"], content: "I'd know it's working if people quoted their OWN past thoughts back to themselves — if a past version of you talked you into something today. Not time-in-app. A past you, resurfaced, changing a present you." },
+  { s: "s7", daysAgo: 11, type: "question", themes: ["integrity", "the product"], content: "Could I fake even the good signal — 'resurfaced and acted on it'? Yes, if I tried. Nudge, notify, manufacture the resurfacing. The only thing protecting the product from rot is my own integrity, which is terrifying as a foundation." },
   { s: "s8", daysAgo: 9, type: "decision", themes: ["the product", "anti-metric"], content: "Never count the days, only the thinking. A streak rewards continuity and punishes the gap — the shame of breaking it is the engine. A mirror just reflects what was there and says nothing about the days you didn't show up." },
   { s: "s8", daysAgo: 9, type: "idea", themes: ["the product", "anti-metric"], content: "The test for any surface: does it ever make the user feel WATCHED for absence? If skipping three days produces an artifact — a broken chain, a guilt nudge, a 0 — it's a streak in a nice coat." },
-  { s: "s10", daysAgo: 2, type: "decision", themes: ["the product"], content: "Make memory a gap-revealer, not a party trick. When the RAG surfaces a past thought it should arrive as a question — 'you said this three weeks ago; does it still hold?' — not as a trophy that shows off it remembered." },
+  { s: "s10", daysAgo: 2, type: "decision", themes: ["the product", "ai & agency"], content: "Make memory a gap-revealer, not a party trick. When the RAG surfaces a past thought it should arrive as a question — 'you said this three weeks ago; does it still hold?' — not as a trophy that shows off it remembered." },
   { s: null, daysAgo: 15, type: "idea", themes: ["the product"], content: "The midwife metaphor is load-bearing, not decoration. The whole product is the refusal to deliver the baby for you. Every feature should be asked: does this help them deliver it, or does it deliver it for them?" },
   { s: null, daysAgo: 20, type: "opinion", themes: ["the product", "anti-metric"], content: "Most 'thinking' apps are productivity apps wearing a turtleneck. They count, they nudge, they gamify reflection until reflection becomes another thing to be behind on. I'd rather ship something quiet that you can disappear from without guilt." },
-  { s: null, daysAgo: 8, type: "question", themes: ["the product"], content: "What's the smallest version of this that still has a soul? Every cut I'm tempted to make for the demo, I have to check it isn't cutting the part that makes it not-a-chatbot." },
 
   // ---- SOCIETY & SCIENCE ----
   { s: "s3", daysAgo: 23, type: "idea", themes: ["incentives", "science"], content: "My own Goodhart: every proxy eventually gets gamed, and the gaming looks like success until you check the thing the proxy was standing in for. The replication crisis and the AI-essay thing are the same disease in different hosts." },
   { s: "s3", daysAgo: 23, type: "opinion", themes: ["science", "incentives"], content: "The replication crisis isn't proof the method failed — it's the method CATCHING the rot. What failed is the career structure that paid for the appearance of discovery. Don't mistake the immune response for the disease." },
-  { s: "s5", daysAgo: 17, type: "opinion", themes: ["climate", "energy"], content: "Degrowth is morally serious but politically a fantasy. The honest path is abundance: make clean energy so cheap that decarbonizing is the path of least resistance, not a sacrifice you have to guilt people into." },
-  { s: "s5", daysAgo: 17, type: "idea", themes: ["climate", "energy"], content: "Jevons is a problem when the cheap thing is dirty. If the abundant energy is clean, more of it isn't the catastrophe — running desalination or direct air capture on cheap clean kWh is fine. But I shouldn't pretend the trade is zero; mining and land use are real, just smaller problems I'd rather have." },
-  { s: "s11", daysAgo: 0, type: "observation", themes: ["attention", "reading"], content: "The attention economy trained me to extract from everything. That paragraph this morning was useless to me, and that's exactly why it got through. Deep reading can't survive being instrumentalized." },
-  { s: "s11", daysAgo: 0, type: "decision", themes: ["attention", "reading"], content: "I'm going to protect some reading I'm not allowed to use for anything. No notes, no turning it into a feature idea or a tweet. Useless on purpose. The opposite of everything I've optimized, and that's the point." },
+  { s: null, daysAgo: 17, type: "opinion", themes: ["climate", "energy"], content: "Degrowth is morally serious but politically a fantasy. The honest path is abundance: make clean energy so cheap that decarbonizing is the path of least resistance, not a sacrifice you have to guilt people into." },
   { s: null, daysAgo: 18, type: "opinion", themes: ["attention", "mental health"], content: "We ran an unconsented experiment on teenagers with engineered dopamine and we're acting surprised by the results. The honest version isn't 'phones bad' — it's that a few companies' growth metrics got to redesign childhood, and no one chose that." },
-  { s: null, daysAgo: 14, type: "opinion", themes: ["science", "longevity"], content: "Most longevity content is hope laundered into supplements. The real work — metabolic biology, senescence, the boring slow trials — doesn't trend because it can't promise you anything by Friday. The hype is downstream of impatience." },
-  { s: null, daysAgo: 12, type: "opinion", themes: ["cities", "attention"], content: "Walkable cities are an attention argument, not just an urbanist one. A street you can walk lets your mind wander; a stroad you have to drive demands all of it. We designed places that leave no room to think and then wondered why no one thinks." },
-  { s: null, daysAgo: 22, type: "opinion", themes: ["science", "incentives"], content: "Open science is the obvious fix and it's slow for the same reason everything is slow — the people who'd benefit aren't the people who hold the power, and prestige is a currency that resists being made free." },
-  { s: null, daysAgo: 10, type: "question", themes: ["ai", "incentives"], content: "AI doomerism and accelerationism are both ways of not having to do the boring middle thing: build the specific safeguards for the specific harms in front of us. Is the apocalypse framing, in either direction, just a way to skip the unglamorous work?" },
-  { s: null, daysAgo: 6, type: "opinion", themes: ["attention", "productivity"], content: "Productivity should mean 'did the thing that mattered get done,' not 'how many things got done.' We measure motion because it's countable and meaning isn't. The whole genre is an elaborate way of avoiding the one hard thing you already know you're avoiding." },
+  { s: null, daysAgo: 10, type: "question", themes: ["ai & agency", "incentives"], content: "AI doomerism and accelerationism are both ways of not having to do the boring middle thing: build the specific safeguards for the specific harms in front of us. Is the apocalypse framing, in either direction, just a way to skip the unglamorous work?" },
+  { s: "s11", daysAgo: 1, type: "observation", themes: ["attention", "reading"], content: "The attention economy trained me to extract from everything. That paragraph this morning was useless to me, and that's exactly why it got through. Deep reading can't survive being instrumentalized." },
+  { s: "s11", daysAgo: 1, type: "decision", themes: ["attention", "reading"], content: "I'm going to protect some reading I'm not allowed to use for anything. No notes, no turning it into a feature idea or a tweet. Useless on purpose. The opposite of everything I've optimized, and that's the point." },
 
   // ---- PERSONAL (the 40%) ----
   { s: "s6", daysAgo: 16, type: "feeling", themes: ["home", "family"], content: "Found one of my dad's old notes in a book today. 'Eat breakfast.' He used to leave for work before I woke up. A man saying he was thinking about me while I slept, in the only register he had." },
   { s: "s6", daysAgo: 16, type: "observation", themes: ["home", "family"], content: "At 1am I didn't want it to be deep. I just needed to not be the only one who knew the note existed. Now two of us know. That was enough." },
-  { s: "s9", daysAgo: 7, type: "observation", themes: ["friendship"], content: "Me and an old friend stopped drifting and started doing logistics. 'You alive?' 'Haha yeah busy.' The texts went from three hours about nothing to status pings." },
-  { s: "s9", daysAgo: 7, type: "idea", themes: ["friendship"], content: "We didn't lose each other — we lost the SURFACE for it. The empty afternoons are gone, not the friendship. It's a logistics problem wearing the costume of an emotional one. So make the surface on purpose: call, on a walk, no agenda, and let it tell me." },
-  { s: "s11", daysAgo: 0, type: "feeling", themes: ["reading", "joy"], content: "Read a paragraph of Marilynne Robinson on the bus and had to put the phone down and look out the window for two stops. Forgot reading could do that. I've been reading like I'm clearing a backlog." },
-  { s: null, daysAgo: 5, type: "feeling", themes: ["burnout", "rest"], content: "Three weeks of treating rest as something to earn. I keep working until I'm useless and calling it discipline. The dread before deep work lifts the second I start — the dread is about starting, not the work. I should stop fighting the start and start fighting the not-resting." },
-  { s: null, daysAgo: 4, type: "observation", themes: ["attention", "rest"], content: "I think more clearly walking than sitting. The motion does something to the part of me that censors. My best ideas arrive the moment I stop trying to have them — never at the desk." },
+  { s: null, daysAgo: 7, type: "idea", themes: ["friendship"], content: "We didn't lose each other — we lost the SURFACE for it. The empty afternoons are gone, not the friendship. It's a logistics problem wearing the costume of an emotional one. So make the surface on purpose: call, on a walk, no agenda, and let it tell me." },
+  { s: "s9b", daysAgo: 4, type: "feeling", themes: ["burnout", "rest"], content: "I made the guilt the proof I cared — if I'm not anxious about working, I must not be serious. The dread before deep work lifts the second I start; the dread is about starting, not the work. Stop fighting the start. Start fighting the not-resting." },
+  { s: null, daysAgo: 5, type: "observation", themes: ["attention", "rest"], content: "I think more clearly walking than sitting. The motion does something to the part of me that censors. My best ideas arrive the moment I stop trying to have them — never at the desk." },
   { s: null, daysAgo: 3, type: "feeling", themes: ["doubt", "late night"], content: "Late-night doubt again. Not about whether the idea is good — about whether I'm the person who gets to build it. By morning it's gone. The doubt has a curfew; it never survives sunrise, which makes me trust it less." },
   { s: null, daysAgo: 9, type: "feeling", themes: ["joy"], content: "A small unexpected good thing: the hawker auntie remembered my order without asking. Kaya toast, no sugar in the kopi. Stupid how much that fixed my whole morning." },
   { s: null, daysAgo: 17, type: "observation", themes: ["home", "rest"], content: "Singapore at 6am before the heat. Walked to nowhere for forty minutes. Nobody needs me before 9. That hour is the only thing I own outright." },
-  { s: null, daysAgo: 19, type: "feeling", themes: ["burnout", "the product"], content: "Shipped the export feature at 3am and felt nothing. That's the tell. When finishing the thing produces no feeling, I've been running on the wrong fuel for too long." },
-
-  // ---- a few more idea/work to hit the 60/40 and theme density ----
-  { s: null, daysAgo: 25, type: "idea", themes: ["the product", "writing"], content: "The bank should read like a commonplace book, not a feed — reverent toward my own words. No counts, no streaks. A place that makes you want to be honest because nothing in it is keeping score." },
-  { s: null, daysAgo: 20, type: "question", themes: ["the product", "anti-metric"], content: "How do I know it's working without metrics? The honest answer might be: I don't get to know cleanly, the way a funder wants to know. I get to know the slow, unscalable way — by reading what people actually wrote." },
-  { s: "s7", daysAgo: 11, type: "question", themes: ["integrity", "the product"], content: "Could I fake even the good signal — 'resurfaced and acted on it'? Yes, if I tried. Nudge, notify, manufacture the resurfacing. The only thing protecting the product from rot is my own integrity, which is terrifying as a foundation." },
-  { s: "s4", daysAgo: 19, type: "feeling", themes: ["ai & learning"], content: "Quiet alarm: a whole generation getting fluent at SOUNDING smart while getting worse at thinking. And no one will feel it happen, because sounding smart is exactly the thing that hides it." },
-  { s: "s3", daysAgo: 23, type: "feeling", themes: ["science"], content: "Relief at finally getting a handle on the science thing — it's not that truth-seeking broke, it's that we built a career structure that pays for the appearance of discovery. Naming it stopped me sliding into being a crank." },
+  { s: "s11", daysAgo: 1, type: "feeling", themes: ["reading", "joy"], content: "Read a paragraph of Marilynne Robinson on the bus and had to put the phone down and look out the window for two stops. Forgot reading could do that. I've been reading like I'm clearing a backlog." },
 ];
 
 // ── daily summaries (kind=daily) — restrained Socratic voice, no praise ──────
+// The daysAgo:0 row has period_end = TODAY, so it is what /today's "TODAY,
+// DISTILLED" surfaces. It STATES THE THESIS plainly: what got worked out today
+// (agency = whether you still think) and what's left open — no praise, no metric.
 const DAILY = [
   {
     daysAgo: 0,
-    sessions: ["s11"],
-    content: `A small thing landed: a paragraph on the bus stopped you for two stops. You traced it back — deep reading can't survive being made useful, and you'd been reading like clearing a backlog.
+    sessions: ["s12", "s13"],
+    content: `Today the month-long thread finally said its own name. Watching a classmate defend an essay he could argue for but not reason through, you stopped circling and named it: AI agency was never about whether the machine can act for you. It's whether you still think — or whether you've handed it over and kept the feeling of having thought.
 
-You made one decision out of it: protect some reading you're not allowed to use for anything. Useless on purpose.
+You noticed the real mechanism, too. The danger isn't the borrowed words; words can be checked. It's the borrowed certainty — a belief shaped to feel like yours, arriving with no friction and no resistance. The friction was the signal that a belief wasn't yet yours.
 
-Left open: whether you can actually hold that line, given that turning things into use is the habit of the whole month.`,
+You turned the line on your own product, which is the only honest place to point it: every feature is a fork — does it make someone stronger without you, or weaker without you? You decided it never hands you the conclusion, even when handing it over would feel kinder.
+
+Left open: whether you can build a tool that fails the easy way — less satisfying than the thing that just answers — and still get anyone to use it.`,
   },
   {
     daysAgo: 2,
     sessions: ["s10"],
-    content: `You stopped diagnosing and tried to define: genuine learning is the felt click when your model changes, and the click only comes if you carried the confusion yourself.
+    content: `You stopped diagnosing and tried to define: genuine thinking is the felt click when your model changes, and the click only comes if you carried the confusion yourself.
 
 From there a design rule fell out — an instrument, not an oracle; reveal the gap, don't close it. You noticed that's the thing being done to you in these calls.
 
 One concrete change you named: make the memory surface a question, not a trophy. Still open: whether a tool can reliably make the gap without quietly stepping over it.`,
   },
   {
-    daysAgo: 7,
-    sessions: ["s9"],
-    content: `You came in calling it a friendship drifting and left calling it a missing surface — you lost the empty afternoons, not each other.
+    daysAgo: 4,
+    sessions: ["s9b"],
+    content: `You caught the trick you'd been playing on yourself: making the guilt the proof you care, so rest could never feel allowed.
 
-That turned a thing to agonize over into a thing to test: a real call, on a walk, no agenda.
+You separated the smoke from the fire — the dread is about starting, not about the work, and it lifts the second you begin.
 
-You didn't decide what it means yet. You decided to let the call decide.`,
+Left open, deliberately: the smallest rest you'd take this week without filing a justification for it.`,
   },
   {
     daysAgo: 9,
@@ -768,15 +851,6 @@ You found a signal you'd trust (a past you talking a present you into something)
 What's left holding the thing honest is your own integrity. You called that terrifying as a foundation and didn't try to make it less so.`,
   },
   {
-    daysAgo: 17,
-    sessions: ["s5"],
-    content: `You took a climate position past the slogan: abundance over degrowth, clean energy cheap enough that decarbonizing is the path of least resistance.
-
-Under pressure you conceded the real edge — Jevons, mining, land use — and kept the view anyway, narrower: it solves carbon and trades it for smaller problems you'd rather have.
-
-You ended with a stronger version than you started, because you let it cost you something.`,
-  },
-  {
     daysAgo: 19,
     sessions: ["s4"],
     content: `Last week it was "something is lost." This week it sharpened: the grade is the symptom, the disease is a game that rewards looking-like-you-learned, and AI is the solvent for a bond that was already only friction.
@@ -788,17 +862,22 @@ You left it where it can only be settled by watching what you do, not what you a
 ];
 
 // ── weekly recaps (kind=weekly) — longer "letters", hand meaning back ────────
+// The latest weekly (current week, created most recently) is the /recap surface.
+// It is a short, moving letter that LANDS THE THESIS — agency is whether you
+// still think — and hands the meaning back rather than resolving it.
 const WEEKLY = [
   {
-    // current week
+    // current week — the thesis letter (this is what /recap leads with)
     startDaysAgo: 6,
     endDaysAgo: 0,
-    sessions: ["s9", "s10", "s11"],
-    content: `This week the month-long thread about thinking and machines stopped being a complaint and became a definition. You said genuine learning is the felt click when your model changes — and the click only arrives if you carried the confusion yourself. From that, almost without trying, you derived the product you've been circling for a month: an instrument, not an oracle. Something that makes the gap visible and refuses to step over it for you. You even caught the design implication for memory — that a resurfaced thought should arrive as a question, not a trophy.
+    sessions: ["s10", "s12", "s13"],
+    content: `For a month you've been circling the same fear without naming it, and this week it finally held still long enough for you to say it. AI agency, you decided, was never about whether the machine can act for you. It's a smaller, harder question: do you still think — or have you handed it over and kept the feeling of having thought?
 
-Underneath the work, a quieter week. A friendship you'd filed under "drifting" turned out to be a missing surface, not a missing person — you decided to test it with a call instead of mourning it in advance. And a paragraph on a bus stopped you cold and reminded you that the reading you keep grieving can't survive being made useful.
+You got there the way you get everywhere, by refusing to stop at the obvious. The thing that disturbs you isn't borrowed words; words you can check. It's borrowed certainty — a belief shaped so neatly to feel like yours that you never notice you're holding it. The friction you used to resent was the signal, all along, that a belief wasn't yet yours. That's the whole month in one sentence, and it took you a month to earn it.
 
-There's a thread connecting those last two to the work, if you want it: each is about protecting something from being instrumentalized — the friendship from logistics, the reading from use, the learning from the answer-machine. You haven't said out loud whether that's one principle or three coincidences. I'm not going to say it for you. But it's there.`,
+Then you did the part most people skip: you turned the knife around. You're building a tool in the same family as the one you're indicting, and you didn't flinch from it. You set a line with a cost attached — Socrates never hands you the conclusion, even when handing it over would feel kinder; every feature is a fork between making someone stronger without you and weaker without you.
+
+I won't tell you whether you can build a thing that's willing to be less satisfying than the tool that just answers. That's the open question, and it's yours to live, not mine to close. But notice what changed this week: you stopped describing a thing you were against and started describing a thing you're for. A midwife, not an oracle. Hold the line when it gets inconvenient — that's the only day it ever matters.`,
   },
   {
     startDaysAgo: 13,
@@ -815,7 +894,7 @@ Smaller but not small: you turned the anti-metric ethos into a rule you can actu
   {
     startDaysAgo: 27,
     endDaysAgo: 14,
-    sessions: ["s1", "s2", "s3", "s4", "s5"],
+    sessions: ["s1", "s2", "s3", "s4"],
     content: `The thread that opened this stretch came from a group chat: your peers — the sharp ones, not the lazy ones — handing a reflection essay to a machine, and your unease that there's no error message when someone stops thinking. By the end of the two weeks you'd moved that unease a long way. It went from "something is lost" to a sharper, colder claim: the grade is the symptom, not the disease; the disease is a game that rewards looking-like-you-learned; and AI is just the most efficient solvent for a bond to real thinking that was only ever made of friction.
 
 You tested the same shape against other rooms and found it held. The replication crisis, you decided, isn't the method failing — it's the method catching a career structure that pays for the appearance of discovery. You even gave the recurring shape your own name rather than borrowing Goodhart's: every proxy gets gamed, and the gaming looks like success until you check the thing it stood in for.
@@ -828,48 +907,60 @@ Two doubts you left honestly unresolved, which is the right place for them: whet
 
 // ── patterns (~5) — neutral observations / open questions, real provenance ───
 // Provenance is filled in at insert time with REAL seeded ids (by entry index
-// and session key), so it always references rows that exist.
+// and session key), so it always references rows that exist. entryIdx values
+// index into ENTRIES above. The NEWEST pattern (surfacedDaysAgo:0) NAMES the
+// flagship tension as a neutral open question — this is the first item /today's
+// "WORTH RETURNING TO" surfaces.
 const PATTERNS = [
   {
+    // FLAGSHIP — newest, surfaced today. Names the agency ⇄ thinking tension.
     kind: "recurring",
-    surfacedDaysAgo: 1,
-    // flagship thread across all four weeks
-    entryIdx: [0, 3, 6, 8],
-    sessionKeys: ["s1", "s4", "s10"],
+    surfacedDaysAgo: 0,
+    // the agency thread across all four weeks: classmate (10), the thesis
+    // question (13), the flagship decision (14), the opening unease (0), and
+    // the "felt click" definition (6).
+    entryIdx: [10, 13, 14, 0, 6],
+    sessionKeys: ["s1", "s10", "s12"],
     summary:
-      "Across four weeks you keep returning to one shape: a system that rewards the appearance of a thing over the thing itself, and a worry that the appearance hides the loss. It started with a reflection essay, moved to grades-as-symptom, and last week became a positive definition — learning as the felt 'click' a machine can't hand you. You said it would settle by watching what you do, not what you argue. What do you make of having circled it this many times before naming what you're actually for?",
+      "For four weeks one question has been forming under everything else, and this week it has a name: not whether AI can act for you, but whether you still think — or whether you've handed it over and kept the feeling of having thought. It began with peers offloading an essay, hardened into 'no error message when you stop thinking,' became a definition of the felt click a machine can't hand you, and now turns back on the thing you're building. You've decided the line is to never hand over the conclusion. The open question stands on its own: when does a tool stop sharpening your thinking and start replacing it — and how would you know from the inside?",
   },
   {
     kind: "contradiction",
     surfacedDaysAgo: 1,
-    entryIdx: [12, 49],
+    // the thing you fear in others (17) vs. could-I-fake-it (23)
+    entryIdx: [17, 23],
     sessionKeys: ["s7"],
     summary:
       "Two things you've said sit in tension. You named the thing you most fear in other people — optimizing the legible fake over the real work — and then said you have more power to do exactly that than anyone, and could fake even the signal you'd trust. The critic and the suspect are the same person here. That's not a charge; it's a mirror. What do you make of it?",
   },
   {
     kind: "recurring",
-    surfacedDaysAgo: 3,
-    entryIdx: [29, 39, 45],
-    sessionKeys: ["s11"],
-    summary:
-      "A quieter thread runs under the loud one: protecting things from being made useful. The friendship from logistics, the reading from extraction, the daily walk that nobody needs from you before nine. You haven't said whether this is one principle or three separate small mercies. The pattern is just here — the meaning is yours.",
-  },
-  {
-    kind: "abandoned",
-    surfacedDaysAgo: 4,
-    entryIdx: [14],
-    sessionKeys: [],
-    summary:
-      "You raised the question of whether the 'safer path' is actually safer or just more legible to other people — and then never came back to it. Every later session went toward building, not toward the fork. An open thread you set down. Worth picking up, or already answered by what you've been doing?",
-  },
-  {
-    kind: "recurring",
     surfacedDaysAgo: 2,
-    entryIdx: [18, 19, 48],
+    // anti-metric re-derived each time: never count days (24), watched for
+    // absence (25), thinking-apps-turtleneck (28)
+    entryIdx: [24, 25, 28],
     sessionKeys: ["s8"],
     summary:
       "Anti-metric keeps coming back not as a slogan but as a working rule you re-derive each time: never count the days, only the thinking; does this surface make someone feel watched for absence. You keep auditing your own product against your own ethics. The recurrence is the signal — what's it telling you about where you don't yet trust yourself?",
+  },
+  {
+    kind: "recurring",
+    surfacedDaysAgo: 3,
+    // protecting things from being made useful: reading (35), the walk (43),
+    // the friendship surface (38)
+    entryIdx: [35, 43, 38],
+    sessionKeys: ["s11"],
+    summary:
+      "A quieter thread runs under the loud one: protecting things from being made useful. The reading from extraction, the daily walk that nobody needs from you before nine, the friendship from logistics. You haven't said whether this is one principle or three separate small mercies. The pattern is just here — the meaning is yours.",
+  },
+  {
+    kind: "abandoned",
+    surfacedDaysAgo: 5,
+    // the safer-path question (18), never returned to
+    entryIdx: [18],
+    sessionKeys: [],
+    summary:
+      "You raised the question of whether the 'safer path' is actually safer or just more legible to other people — and then never came back to it. Every later session went toward building, not toward the fork. An open thread you set down. Worth picking up, or already answered by what you've been doing?",
   },
 ];
 
@@ -982,13 +1073,18 @@ async function main() {
     .map((d) => d.embedding);
 
   // 3c) Insert entries (with their vectors), linked to a session where given.
+  // Each entry is dated late-evening (20:00) on its day so /today picks up the
+  // daysAgo=0 rows. An optional per-entry `min` (minutes past 20:00) breaks
+  // same-day ties deterministically, so the curated newest line on the most
+  // recent day is reliably the LAST row by created_at (it leads /today and the
+  // /bank). Without `min` it defaults to 0 (older-leaning within the day).
   console.log("inserting entries…");
   for (let i = 0; i < ENTRIES.length; i++) {
     const e = ENTRIES[i];
     const vec = "[" + vectors[i].join(",") + "]";
     const sid = e.s ? sessionId[e.s] ?? null : null;
     const interval = `${e.daysAgo} days`;
-    // dated within the day, late-evening-ish so /today picks up daysAgo=0 rows.
+    const min = e.min ?? 0;
     await sql`
       insert into entries (user_id, session_id, type, content, embedding, themes, created_at)
       values (
@@ -998,7 +1094,8 @@ async function main() {
         ${e.content},
         ${vec}::vector,
         ${e.themes},
-        date_trunc('day', now()) - (${interval})::interval + interval '20 hours'
+        date_trunc('day', now()) - (${interval})::interval
+          + interval '20 hours' + (${min} || ' minutes')::interval
       )`;
   }
   console.log(`  inserted ${ENTRIES.length} entries`);
@@ -1022,9 +1119,10 @@ async function main() {
   }
   // Optional short descriptions for the marquee threads (others left null).
   const THEME_DESC = {
-    "ai & learning":
-      "the month-long thread: offloaded thinking, the grade as symptom, and what the felt 'click' of real learning is",
+    "ai & agency":
+      "the flagship thread: not whether AI can act for you, but whether you still think — offloaded reasoning, borrowed certainty, the felt 'click' a machine can't hand you",
     "the product": "design reasoning for Socrates — instrument not oracle, the midwife refusal",
+    education: "students defending work they never reasoned; the grade as symptom",
     "anti-metric": "never count the days, only the thinking",
     incentives: "Goodhart, gamed proxies, paying for the appearance of a thing",
     direction: "post-ORD next steps and the bar that isn't money or status",
