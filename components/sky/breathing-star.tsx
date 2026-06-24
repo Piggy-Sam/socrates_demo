@@ -5,6 +5,7 @@ import {
   wave,
   mix,
   mixInto,
+  smooth,
   readRGBVar,
   fillBucket,
   fillStyleForBucket,
@@ -112,6 +113,19 @@ export function BreathingStar({
     let onScreen = true; // IntersectionObserver gate
     let settledState: StarState | null = null; // state we've parked on (no RAF)
     const start = performance.now();
+
+    // ── Eased transitions ─────────────────────────────────────────────────
+    // CHAR bright/scale glide toward the target each frame (no hard-cut), and
+    // the energy RHYTHM cross-fades from the previous state over ~0.5s so e.g.
+    // idle→speaking blends rather than snaps. `drawn` is the state the loop is
+    // currently rendering; when stateRef diverges we open a fresh cross-fade.
+    const XFADE = 0.5; // seconds for the rhythm cross-fade
+    let drawn: StarState = stateRef.current; // state we're easing TOWARD
+    let from: StarState = drawn; // state we're easing FROM (rhythm)
+    let xfadeT0 = -Infinity; // wall-seconds the current cross-fade began
+    let curBright = CHAR[drawn].bright; // eased character (size/opacity)
+    let curScale = CHAR[drawn].scale;
+    let wakeT0 = -Infinity; // wall-seconds of an internal wake pulse
     let accent: RGB = [77, 124, 255];
     const readColors = () => {
       accent = readRGBVar("--accent-rgb", accent);
@@ -141,24 +155,56 @@ export function BreathingStar({
     const frame = (t: number): number => {
       const st = stateRef.current;
       const lvl = levelRef.current;
-      const ch = CHAR[st];
+
+      // Open a new cross-fade whenever the target state changes; the prior
+      // target becomes the `from` rhythm and the eased CHAR keeps gliding from
+      // wherever it currently sits (no snap). Leaving "connecting"/idle for an
+      // active state fires an internal wake pulse (a brief brightening swell).
+      if (st !== drawn) {
+        const waking =
+          (drawn === "thinking" || drawn === "ended" || drawn === "idle") &&
+          (st === "listening" || st === "speaking");
+        from = drawn;
+        drawn = st;
+        xfadeT0 = t;
+        if (waking) wakeT0 = t;
+      }
+
+      // Ease the per-state character (size + opacity) toward its target. A
+      // ~0.06 step per ~45fps frame settles in a few hundred ms — a glide.
+      const target = CHAR[st];
+      curBright += (target.bright - curBright) * 0.06;
+      curScale += (target.scale - curScale) * 0.06;
+
+      // Rhythm cross-fade weight: 0 just after a change → 1 once settled.
+      const k = smooth((t - xfadeT0) / XFADE);
+      // Internal wake pulse: a short additive swell right after waking.
+      const wake = Math.max(0, 1 - (t - wakeT0) / 0.45);
+      const wakeBoost = wake * wake * 0.22;
+
       ctx.clearRect(0, 0, size, size);
       for (const arr of buckets.values()) arr.length = 0; // reuse, no realloc
       const step = (size * 0.84) / (N - 1);
-      const ox = size / 2 - C * step * ch.scale;
-      const oy = size / 2 - C * step * ch.scale;
+      const ox = size / 2 - C * step * curScale;
+      const oy = size / 2 - C * step * curScale;
       const baseR = size * 0.026;
       const lit = mix(accent, [255, 255, 255], 0.35);
 
       let sumE = 0;
       for (const { gx, gy, rr } of cells) {
-        const e = energy(st, rr, gx, gy, t);
+        // blend the OUTGOING and INCOMING rhythms over the cross-fade
+        const e =
+          k >= 1
+            ? energy(drawn, rr, gx, gy, t)
+            : energy(from, rr, gx, gy, t) * (1 - k) +
+              energy(drawn, rr, gx, gy, t) * k;
         sumE += e;
-        const x = ox + gx * step * ch.scale;
-        const y = oy + gy * step * ch.scale;
-        const boost = (st === "speaking" || st === "listening") ? lvl * 0.2 : 0;
-        const radius = baseR * (0.4 + 1.05 * e) * ch.scale;
-        const alpha = Math.min(1, (0.18 + 0.82 * e) * ch.bright + boost);
+        const x = ox + gx * step * curScale;
+        const y = oy + gy * step * curScale;
+        const boost =
+          (st === "speaking" || st === "listening" ? lvl * 0.2 : 0) + wakeBoost;
+        const radius = baseR * (0.4 + 1.05 * e) * curScale;
+        const alpha = Math.min(1, (0.18 + 0.82 * e) * curBright + boost);
         mixInto(col, accent, lit, e * 0.4);
         const key = fillBucket(col[0], col[1], col[2], alpha);
         let arr = buckets.get(key);
