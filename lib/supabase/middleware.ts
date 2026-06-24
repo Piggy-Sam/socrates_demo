@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { publicEnv } from "@/lib/env";
+import { DEMO_COOKIE } from "@/lib/demo";
 
 // Public routes that don't require a session. (/about is the renamed /design
 // reference; /reset-password must load so a recovery link can set a password.)
@@ -40,8 +41,11 @@ export async function updateSession(request: NextRequest) {
   const isPublic = PUBLIC_PATHS.some(
     (p) => path === p || path.startsWith(p + "/"),
   );
+  // A transient demo session has no Supabase user but may browse the app shell
+  // (reads resolve to the seeded demo account; writes no-op server-side).
+  const isDemo = request.cookies.get(DEMO_COOKIE)?.value === "1";
 
-  if (!user && !isPublic) {
+  if (!user && !isDemo && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", path);

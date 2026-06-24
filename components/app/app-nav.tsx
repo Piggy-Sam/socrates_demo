@@ -7,6 +7,7 @@ import { Wordmark } from "@/components/brand/wordmark";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { LinkButton } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
+import { exitDemo } from "@/app/demo-actions";
 
 const LINKS = [
   { href: "/today", label: "Today" },
@@ -16,7 +17,13 @@ const LINKS = [
   { href: "/recap", label: "Recap" },
 ] as const;
 
-export function AppNav({ displayName }: { displayName?: string | null }) {
+export function AppNav({
+  displayName,
+  isDemo = false,
+}: {
+  displayName?: string | null;
+  isDemo?: boolean;
+}) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -30,6 +37,14 @@ export function AppNav({ displayName }: { displayName?: string | null }) {
     <header className="sticky top-0 z-40 border-b border-hairline bg-ink/80 backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-3 px-5 py-3.5 sm:px-8">
         <Wordmark size="sm" staticCursor />
+        {isDemo && (
+          <span
+            className="label-mono rounded-sm border border-accent/40 px-1.5 py-0.5 leading-none text-accent"
+            title="You're exploring a live demo account — nothing you do is saved."
+          >
+            Demo
+          </span>
+        )}
 
         <nav className="order-3 flex items-center gap-0.5 sm:order-2 sm:ml-2">
           {LINKS.map((l) => {
@@ -79,15 +94,31 @@ export function AppNav({ displayName }: { displayName?: string | null }) {
           >
             <SlidersHorizontal className="size-4" strokeWidth={1.6} />
           </Link>
-          <button
-            type="button"
-            onClick={signOut}
-            aria-label={`Sign out${displayName ? ` (${displayName})` : ""}`}
-            title="Sign out"
-            className="inline-flex size-9 items-center justify-center rounded-sm border border-hairline text-marble-dim transition-colors hover:border-hairline-strong hover:text-marble"
-          >
-            <LogOut className="size-4" strokeWidth={1.6} />
-          </button>
+          {isDemo ? (
+            // No real session to sign out of — leaving just clears the demo
+            // cookie and returns to the landing page. Nothing was ever saved.
+            <form action={exitDemo} className="contents">
+              <button
+                type="submit"
+                aria-label="Exit demo"
+                title="Exit demo — nothing you did is saved"
+                className="inline-flex h-9 items-center gap-1.5 rounded-sm border border-hairline px-2.5 text-marble-dim transition-colors hover:border-hairline-strong hover:text-marble"
+              >
+                <LogOut className="size-4" strokeWidth={1.6} />
+                <span className="label-mono">Exit</span>
+              </button>
+            </form>
+          ) : (
+            <button
+              type="button"
+              onClick={signOut}
+              aria-label={`Sign out${displayName ? ` (${displayName})` : ""}`}
+              title="Sign out"
+              className="inline-flex size-9 items-center justify-center rounded-sm border border-hairline text-marble-dim transition-colors hover:border-hairline-strong hover:text-marble"
+            >
+              <LogOut className="size-4" strokeWidth={1.6} />
+            </button>
+          )}
         </div>
       </div>
     </header>

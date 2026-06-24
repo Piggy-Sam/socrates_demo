@@ -9,7 +9,7 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { profile } = await requireProfile();
+  const { profile, isDemo } = await requireProfile();
 
   return (
     // --nav-h is the rendered height of the sticky AppNav header; full-bleed
@@ -25,7 +25,7 @@ export default async function AppLayout({
       <div className="fixed inset-0 -z-10">
         <DotMatrix intensity={0.5} />
       </div>
-      <AppNav displayName={profile.displayName} />
+      <AppNav displayName={profile.displayName} isDemo={isDemo} />
       <main
         id="main"
         className="mx-auto w-full max-w-6xl flex-1 px-5 py-8 sm:px-8 sm:py-10"
