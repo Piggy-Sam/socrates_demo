@@ -76,9 +76,9 @@ export function PhraseCycler({ className = "" }: { className?: string }) {
   const started = useRef(false);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: SSR
-    // renders the stable PHRASES[0]; the shuffle is client-only and must land
-    // post-mount, otherwise server and first client paint disagree (hydration).
+    // SSR renders the stable PHRASES[0]; the shuffle is client-only and must
+    // land post-mount, else server and first client paint disagree (hydration).
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional, see above
     setOrder(shuffle(PHRASES));
     setIndex(0);
     started.current = true;
