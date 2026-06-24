@@ -129,10 +129,6 @@ export default function Home() {
                 </Button>
               </form>
             </div>
-            <p className="label-mono mt-3.5 text-marble-dim">
-              See demo: no sign-up, a live account to explore · nothing you do is
-              saved
-            </p>
           </div>
         </section>
       </div>
