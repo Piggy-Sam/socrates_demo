@@ -12,6 +12,7 @@ import { getCurrentUser, getProfile } from "@/lib/auth";
 import { db } from "@/lib/db/client";
 import { entries } from "@/lib/db/schema";
 import { startOutboundCall } from "@/lib/elevenlabs/calls";
+import { generateOpener } from "@/lib/llm/opener";
 
 export const runtime = "nodejs";
 
@@ -64,7 +65,10 @@ export async function POST() {
   }
 
   const displayName = profile.displayName?.trim() || "there";
-  const recent = await recentThread(user.id);
+  const [recent, firstMessage] = await Promise.all([
+    recentThread(user.id),
+    generateOpener(user.id, "call", displayName),
+  ]);
 
   try {
     const result = await startOutboundCall({
@@ -73,6 +77,7 @@ export async function POST() {
         user_id: user.id,
         display_name: displayName,
         recent_thread: recent,
+        first_message: firstMessage,
       },
     });
 

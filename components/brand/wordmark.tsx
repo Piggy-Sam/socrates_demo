@@ -27,12 +27,23 @@ export function StarMark({
   );
 }
 
-/** The blinking terminal block cursor. */
-export function BlinkCursor({ className = "" }: { className?: string }) {
+/**
+ * The terminal block cursor — blinks by default. Pass `noBlink` for a solid,
+ * always-on accent block (same size/placement, no animation).
+ */
+export function BlinkCursor({
+  className = "",
+  noBlink = false,
+}: {
+  className?: string;
+  noBlink?: boolean;
+}) {
   return (
     <span
       aria-hidden
-      className={`cursor-blink ml-1 inline-block align-[-0.08em] ${className}`}
+      className={`bg-accent ml-1 inline-block align-[-0.08em] ${
+        noBlink ? "" : "cursor-blink"
+      } ${className}`}
       style={{ width: "0.5em", height: "0.95em" }}
     />
   );
@@ -44,6 +55,8 @@ type Props = {
   href?: string | null;
   /** show the bust mark (kept name for back-compat with existing callers) */
   withStar?: boolean;
+  /** render a solid, always-on cursor block instead of the blinking one */
+  staticCursor?: boolean;
 };
 
 const TEXT = {
@@ -65,6 +78,7 @@ export function Wordmark({
   size = "md",
   href = "/",
   withStar = true,
+  staticCursor = false,
 }: Props) {
   const inner = (
     <span className={`inline-flex items-center ${GAP[size]} ${className}`}>
@@ -75,7 +89,7 @@ export function Wordmark({
         className={`inline-flex items-center font-mono-display font-medium uppercase tracking-[0.18em] text-marble ${TEXT[size]}`}
       >
         Socrates<span className="ml-[0.4em] text-accent">AI</span>
-        <BlinkCursor />
+        <BlinkCursor noBlink={staticCursor} />
       </span>
     </span>
   );

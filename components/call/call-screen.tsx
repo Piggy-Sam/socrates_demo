@@ -89,7 +89,7 @@ function CallSurface({ displayName }: Props) {
     // exactly UNDER the sticky nav — the live controls can never slip below the
     // fold. justify-between pins the footer to the bottom; the caption band in
     // the middle is internally clamped so a long turn can't push it off-screen.
-    <div className="relative flex min-h-[calc(100dvh-var(--nav-h))] flex-col items-center justify-between overflow-hidden bg-ink px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))]">
+    <div className="relative flex h-[calc(100dvh-var(--nav-h))] flex-col items-center justify-between overflow-hidden bg-ink px-6 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))]">
       {/* off-screen page heading for screen-reader heading navigation */}
       <h1 className="sr-only">Talk to Socrates</h1>
 
@@ -115,12 +115,12 @@ function CallSurface({ displayName }: Props) {
       />
 
       {/* top: a quiet mono readout — the instrument, in voice */}
-      <header className="relative z-10 flex w-full max-w-md flex-col items-center pt-4 text-center">
+      <header className="relative z-10 flex w-full max-w-md flex-col items-center pt-2 text-center">
         <span className="label-mono">&rsaquo; voice &middot; one instrument of many</span>
       </header>
 
       {/* center: Socrates' presence — the dot-orb */}
-      <main className="relative z-10 flex flex-1 flex-col items-center justify-center gap-7 sm:gap-10">
+      <main className="relative z-10 flex flex-1 flex-col items-center justify-center gap-4 sm:gap-6">
         <div className="grid place-items-center">
           <BreathingStar state={starState} size={orbSize} />
         </div>
@@ -178,7 +178,7 @@ function useOrbSize() {
     mq.addEventListener("change", sync);
     return () => mq.removeEventListener("change", sync);
   }, []);
-  return large ? 220 : 160;
+  return large ? 180 : 140;
 }
 
 // The live caption band. A FIXED-height, internally-clipped region: the footer
@@ -372,9 +372,11 @@ function RoundControl({
   // The active (muted) state stays neutral marble/hairline — the single rationed
   // blue belongs to the orb and the primary "Talk" action, not a toggle. A
   // filled raised face + aria-pressed carries the "on" state without the accent.
+  // The end/hang-up is the lone exception: a cool-leaning danger red marks the
+  // one destructive action, with a tasteful red-tinted hover.
   const tone =
     variant === "end"
-      ? "border-hairline-strong text-marble hover:border-marble hover:bg-raised-2"
+      ? "border-danger text-danger hover:border-danger hover:bg-danger/10"
       : active
         ? "border-marble bg-raised-2 text-marble"
         : "border-hairline-strong text-marble hover:border-marble hover:bg-raised-2";

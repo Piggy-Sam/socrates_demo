@@ -22,8 +22,34 @@ import { SummaryMarkdown } from "@/components/summary/markdown";
 
 export const dynamic = "force-dynamic";
 
-function greeting(name: string | null | undefined): string {
-  const hour = new Date().getHours();
+/** The current hour (0–23) in an IANA zone; falls back to UTC on a bad zone. */
+function localHour(timezone: string | null | undefined): number {
+  const tz = timezone ?? "UTC";
+  const read = (zone: string) =>
+    Number(
+      new Intl.DateTimeFormat("en-US", {
+        timeZone: zone,
+        hour: "2-digit",
+        hour12: false,
+      })
+        .formatToParts(new Date())
+        .find((p) => p.type === "hour")?.value,
+    );
+  let hour: number;
+  try {
+    hour = read(tz);
+  } catch {
+    hour = read("UTC");
+  }
+  if (hour === 24) hour = 0; // some engines report midnight as 24
+  return Number.isNaN(hour) ? new Date().getUTCHours() : hour;
+}
+
+function greeting(
+  name: string | null | undefined,
+  timezone: string | null | undefined,
+): string {
+  const hour = localHour(timezone);
   const who = name?.trim() ? `, ${name.trim().split(/\s+/)[0]}` : "";
   if (hour < 5) return `Still up${who}?`;
   if (hour < 12) return `Morning${who}.`;
@@ -184,10 +210,10 @@ export default async function TodayPage() {
           <span aria-hidden className="mr-3 text-accent">
             &rsaquo;
           </span>
-          <span>{greeting(profile.displayName)}</span>
+          <span>{greeting(profile.displayName, profile.timezone)}</span>
           <BlinkCursor />
         </h1>
-        <p className="mt-4 max-w-xl font-sans text-lg leading-relaxed text-marble-dim text-pretty">
+        <p className="mt-4 font-sans text-lg leading-relaxed text-marble-dim text-pretty">
           What are you working out? Set it down half-formed — I&apos;ll engage
           it, press on the reasoning, and surface what sharpens it. The thinking
           stays yours.

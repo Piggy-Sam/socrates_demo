@@ -26,6 +26,7 @@ import { db } from "@/lib/db/client";
 import { entries, profiles, sessions } from "@/lib/db/schema";
 import { env } from "@/lib/env";
 import { startOutboundCall } from "@/lib/elevenlabs/calls";
+import { generateOpener } from "@/lib/llm/opener";
 
 export const runtime = "nodejs";
 
@@ -172,12 +173,19 @@ export async function GET(req: Request) {
 
     dueCount++;
     try {
+      const displayName = p.displayName?.trim() || "there";
+      // The daily opener is PROACTIVE: a check-in tied to where they left off.
+      const [recent, firstMessage] = await Promise.all([
+        recentThread(p.id),
+        generateOpener(p.id, "daily", displayName),
+      ]);
       const result = await startOutboundCall({
         toNumber,
         dynamicVariables: {
           user_id: p.id,
-          display_name: p.displayName?.trim() || "there",
-          recent_thread: await recentThread(p.id),
+          display_name: displayName,
+          recent_thread: recent,
+          first_message: firstMessage,
         },
       });
       results.push({
