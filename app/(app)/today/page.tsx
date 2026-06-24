@@ -5,15 +5,19 @@
 // No streaks, no counts-as-pressure, no "you're on a roll." Just an invitation.
 
 import Link from "next/link";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { ArrowRight, PenLine } from "lucide-react";
 import { db } from "@/lib/db/client";
-import { entries, summaries } from "@/lib/db/schema";
+import { entries, patterns, summaries } from "@/lib/db/schema";
 import type { Entry, Summary } from "@/lib/db/schema";
 import { requireProfile } from "@/lib/auth";
 import { LinkButton } from "@/components/ui/button";
 import { BlinkCursor } from "@/components/brand/wordmark";
 import { CallMeNow } from "@/components/today/call-me-now";
+import {
+  PatternsSurface,
+  type SurfacedPattern,
+} from "@/components/today/patterns-surface";
 import { SummaryMarkdown } from "@/components/summary/markdown";
 
 export const dynamic = "force-dynamic";
@@ -55,6 +59,14 @@ const TYPE_LABEL: Record<string, string> = {
   decision: "decision",
 };
 
+/** Pull the candidate entry ids out of a pattern's loosely-typed provenance. */
+function provenanceEntryIds(provenance: unknown): string[] {
+  if (!provenance || typeof provenance !== "object") return [];
+  const ids = (provenance as { entryIds?: unknown }).entryIds;
+  if (!Array.isArray(ids)) return [];
+  return ids.filter((x): x is string => typeof x === "string");
+}
+
 function timeReadout(d: Date): string {
   return d
     .toLocaleString("en-US", {
@@ -70,28 +82,69 @@ function timeReadout(d: Date): string {
 export default async function TodayPage() {
   const { userId, profile } = await requireProfile();
 
-  const [latestSummaryRows, recentEntries, openQuestions] = await Promise.all([
-    db
-      .select()
-      .from(summaries)
-      .where(eq(summaries.userId, userId))
-      .orderBy(desc(summaries.periodEnd))
-      .limit(1),
-    db
-      .select()
-      .from(entries)
-      .where(eq(entries.userId, userId))
-      .orderBy(desc(entries.createdAt))
-      .limit(5),
-    // a few recent open questions to revisit — not a backlog, just an invitation
-    // to press on what you left half-asked (no resolution-tracking metric)
-    db
-      .select()
-      .from(entries)
-      .where(and(eq(entries.userId, userId), eq(entries.type, "question")))
-      .orderBy(desc(entries.createdAt))
-      .limit(3),
-  ]);
+  const [latestSummaryRows, recentEntries, openQuestions, recentPatterns] =
+    await Promise.all([
+      db
+        .select()
+        .from(summaries)
+        .where(eq(summaries.userId, userId))
+        .orderBy(desc(summaries.periodEnd))
+        .limit(1),
+      db
+        .select()
+        .from(entries)
+        .where(eq(entries.userId, userId))
+        .orderBy(desc(entries.createdAt))
+        .limit(5),
+      // a few recent open questions to revisit — not a backlog, just an invitation
+      // to press on what you left half-asked (no resolution-tracking metric)
+      db
+        .select()
+        .from(entries)
+        .where(and(eq(entries.userId, userId), eq(entries.type, "question")))
+        .orderBy(desc(entries.createdAt))
+        .limit(3),
+      // the heaviest quiet move: patterns Socrates has held up across this
+      // person's thinking — surfaced as open questions, never interpreted.
+      db
+        .select()
+        .from(patterns)
+        .where(eq(patterns.userId, userId))
+        .orderBy(desc(patterns.surfacedAt))
+        .limit(2),
+    ]);
+
+  // Resolve each pattern's first provenance entry that STILL exists and is the
+  // person's, so "Press on this" seeds the existing /chat?from= flow with a real
+  // entry (re-extraction can drop an old entry id). Patterns with nothing
+  // resolvable still show — they just won't carry a seed link.
+  const candidateSeedIds = Array.from(
+    new Set(recentPatterns.flatMap((p) => provenanceEntryIds(p.provenance))),
+  );
+  const resolvableSeedIds =
+    candidateSeedIds.length > 0
+      ? new Set(
+          (
+            await db
+              .select({ id: entries.id })
+              .from(entries)
+              .where(
+                and(
+                  eq(entries.userId, userId),
+                  inArray(entries.id, candidateSeedIds),
+                ),
+              )
+          ).map((r) => r.id),
+        )
+      : new Set<string>();
+
+  const surfacedPatterns: SurfacedPattern[] = recentPatterns.map((p) => ({
+    id: p.id,
+    summary: p.summary,
+    seedEntryId:
+      provenanceEntryIds(p.provenance).find((id) => resolvableSeedIds.has(id)) ??
+      null,
+  }));
 
   const latestSummary: Summary | undefined = latestSummaryRows[0];
   const todaysSummary =
@@ -167,6 +220,13 @@ export default async function TodayPage() {
           <p className="label-mono mb-4">FIG.01 · Today, distilled</p>
           <SummaryMarkdown content={todaysSummary.content} />
         </section>
+      ) : null}
+
+      {/* worth returning to — patterns Socrates held up across your thinking,
+          handed back as open questions for YOU to examine (never interpreted).
+          Quiet, dismissible, anti-metric: no counts, no scores. */}
+      {surfacedPatterns.length > 0 ? (
+        <PatternsSurface patterns={surfacedPatterns} />
       ) : null}
 
       {/* recent thoughts — a precise plotted list */}

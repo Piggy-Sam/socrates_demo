@@ -9,6 +9,7 @@ import { db } from "@/lib/db/client";
 import { messages, sessions } from "@/lib/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { extractAndStore } from "@/lib/pipeline/extraction";
+import { detectPatterns } from "@/lib/pipeline/patterns";
 import type { TranscriptTurn } from "@/lib/pipeline/types";
 
 /**
@@ -111,11 +112,21 @@ export async function extractChatSession(sessionId: string): Promise<void> {
   // Re-distill the whole conversation through the shared, idempotent core. The
   // delete-then-reinsert compensation lives inside extractAndStore (next to the
   // code it compensates) and runs atomically under a per-session lock.
-  await extractAndStore({
+  const result = await extractAndStore({
     userId: user.id,
     sessionId,
     turns,
     sourceSessionIds: [sessionId],
     replaceForSession: true,
   });
+
+  // OFF the hot path: hold up any patterns across the person's thinking. Fire-
+  // and-forget with its own try/catch — it must never block, delay, or fail the
+  // distill. Only when this run actually produced entries (no entries, no new
+  // signal worth a model call).
+  if (result.entriesInserted > 0) {
+    void detectPatterns(user.id).catch((err) =>
+      console.error("[patterns] post-chat detection failed", err),
+    );
+  }
 }

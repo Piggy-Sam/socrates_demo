@@ -12,6 +12,7 @@ import { db } from "@/lib/db/client";
 import { messages, sessions, sessionType } from "@/lib/db/schema";
 import { env } from "@/lib/env";
 import { extractAndStore } from "@/lib/pipeline/extraction";
+import { detectPatterns } from "@/lib/pipeline/patterns";
 import type { TranscriptTurn } from "@/lib/pipeline/types";
 
 type SessionType = (typeof sessionType.enumValues)[number];
@@ -266,6 +267,18 @@ export async function POST(req: Request) {
         periodEnd: endedAt,
         sourceSessionIds: [sessionId],
       });
+
+      // OFF the hot path, only when entries were produced: hold up any patterns
+      // across the person's thinking. detectPatterns owns its own errors and is
+      // time-boxed (well within maxDuration); the distill has already committed,
+      // so this can never block or fail it. On serverless we await rather than
+      // truly detach so the work isn't killed when the response returns.
+      if (result.entriesInserted > 0) {
+        await detectPatterns(userId).catch((err) =>
+          console.error("[patterns] post-call detection failed", err),
+        );
+      }
+
       return NextResponse.json({
         ok: true,
         sessionId,
