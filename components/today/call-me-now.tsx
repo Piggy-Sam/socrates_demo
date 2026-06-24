@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Phone, PhoneCall, SlidersHorizontal, X } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { Button, LinkButton } from "@/components/ui/button";
@@ -8,29 +8,28 @@ import { Button, LinkButton } from "@/components/ui/button";
 type Status = "idle" | "calling" | "ringing" | "error" | "blocked";
 
 /**
- * The Buy-Me-a-Coffee "Help me pay for Twilio" button. Their button.prod.min.js
- * reads its own data-* attributes and injects the styled anchor where the script
- * sits — so we mount the script into a ref'd host on the client only.
+ * The cheeky "Help me pay for Twilio" support button. A plain styled anchor to
+ * the Buy-Me-a-Coffee page (NOT their button.prod.min.js script — that widget is
+ * unreliable when injected dynamically and sometimes never renders). This always
+ * shows and prints. Colours mirror the requested BMC config (accent blue fill,
+ * white text, the 😢 emoji, a coffee-yellow cup).
  */
 function BmcButton() {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const host = ref.current;
-    if (!host || host.querySelector("script")) return;
-    const s = document.createElement("script");
-    s.src = "https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js";
-    s.setAttribute("data-name", "bmc-button");
-    s.setAttribute("data-slug", "yancun");
-    s.setAttribute("data-color", "#4d7cff");
-    s.setAttribute("data-emoji", "😢");
-    s.setAttribute("data-font", "Arial");
-    s.setAttribute("data-text", "Help me pay for Twilio");
-    s.setAttribute("data-outline-color", "#ffffff");
-    s.setAttribute("data-font-color", "#ffffff");
-    s.setAttribute("data-coffee-color", "#FFDD00");
-    host.appendChild(s);
-  }, []);
-  return <div ref={ref} className="flex min-h-[3.25rem] justify-center" />;
+  return (
+    <a
+      href="https://www.buymeacoffee.com/yancun"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center justify-center gap-2 rounded-lg px-5 py-3 font-medium text-white shadow-sm transition-transform hover:-translate-y-px active:translate-y-0"
+      style={{ backgroundColor: "#4d7cff", fontFamily: "Arial, sans-serif" }}
+    >
+      <span aria-hidden style={{ color: "#FFDD00" }}>
+        ☕
+      </span>
+      Help me pay for Twilio
+      <span aria-hidden>😢</span>
+    </a>
+  );
 }
 
 // A quiet, secondary way to think out loud: ask Socrates to call you. Voice is
