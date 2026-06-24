@@ -171,7 +171,58 @@ async function main() {
     printManualDefaultsInstruction();
   }
 
+  // 3) END-CALL SYSTEM TOOL (detect-only). For Socrates to actually HANG UP when a
+  // conversation has wound down — not just speak a goodbye and leave dead air — the
+  // agent needs ElevenLabs' built-in "End Call" system tool enabled. The exact
+  // schema path for built-in/system tools has shifted across ElevenLabs versions
+  // (prompt.tools[] vs prompt.built_in_tools.end_call vs conversation_config.agent.tools),
+  // so we DETECT it across the known locations and, if it's not clearly on, print a
+  // manual toggle instruction rather than PATCH tool config blind and risk clobbering.
+  reportEndCallTool(agent);
+
   console.log("\nDone.");
+}
+
+/** Best-effort read-only check for an enabled "end_call" system/built-in tool. */
+function hasEndCallTool(agent) {
+  const ac = getDeep(agent, ["conversation_config", "agent"]);
+  if (!isObject(ac)) return false;
+
+  // a) prompt.built_in_tools.end_call (object or boolean-ish)
+  const builtIn = getDeep(ac, ["prompt", "built_in_tools"]);
+  if (isObject(builtIn) && builtIn.end_call) return true;
+
+  // b) prompt.tools[] / agent.tools[] containing an end_call entry
+  const toolLists = [getDeep(ac, ["prompt", "tools"]), getDeep(ac, ["tools"])];
+  for (const list of toolLists) {
+    if (
+      Array.isArray(list) &&
+      list.some(
+        (t) =>
+          isObject(t) &&
+          (t.name === "end_call" ||
+            t.type === "end_call" ||
+            t.type === "system" && t.name === "end_call"),
+      )
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function reportEndCallTool(agent) {
+  if (hasEndCallTool(agent)) {
+    console.log('\n✓ "End Call" system tool appears enabled — Socrates can hang up when a call winds down.');
+  } else {
+    console.log(
+      '\n! "End Call" system tool not detected on this agent.\n' +
+        "  MANUAL STEP — in the ElevenLabs dashboard, open this agent → Tools (System tools)\n" +
+        '  and enable "End Call". Without it, Socrates can speak a send-off but cannot\n' +
+        "  actually disconnect, leaving dead air. The system prompt already instructs it to\n" +
+        "  wrap up and stop when a conversation has run its course.",
+    );
+  }
 }
 
 function printManualDefaultsInstruction() {
