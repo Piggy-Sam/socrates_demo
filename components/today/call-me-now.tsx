@@ -1,24 +1,29 @@
 "use client";
 
 import { useState } from "react";
-import { Phone, PhoneCall } from "lucide-react";
+import { Phone, PhoneCall, SlidersHorizontal } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
-import { Button } from "@/components/ui/button";
+import { Button, LinkButton } from "@/components/ui/button";
 
 type Status = "idle" | "calling" | "ringing" | "error";
 
 // A quiet, secondary way to think out loud: ask Socrates to call you. Voice is
 // one feature, never the headline — so this is an outline action, not the
-// page's accent. POSTs to /api/calls/trigger (Track E). If that route isn't
-// live yet, we fail gracefully with a calm message — never alarming, never
-// pressure. The transient "ringing" state borrows the accent as a status cue.
+// page's accent. POSTs to /api/calls/trigger. When there's no number on file we
+// don't offer a button that fails after a click — we point gently to settings.
+// The transient "ringing" state borrows the accent as a status cue and offers a
+// quiet way back so it isn't a one-way door.
 export function CallMeNow({
   phone,
+  hasPhone,
   className = "",
 }: {
   phone?: string | null;
+  // whether a usable number is on file; defaults to deriving it from `phone`
+  hasPhone?: boolean;
   className?: string;
 }) {
+  const phoneOnFile = hasPhone ?? Boolean(phone?.trim());
   const reduce = useReducedMotion();
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState<string>("");
@@ -36,12 +41,6 @@ export function CallMeNow({
         body: JSON.stringify({}),
       });
 
-      if (res.status === 404) {
-        setStatus("error");
-        setMessage("Calling isn't wired up yet. Talk now in the browser instead.");
-        return;
-      }
-
       const body = (await res.json().catch(() => null)) as
         | { ok?: boolean; error?: string }
         | null;
@@ -53,9 +52,7 @@ export function CallMeNow({
         // legible; fall back to calm generic copy only when there's nothing.
         setMessage(
           body?.error ||
-            (phone
-              ? "Couldn't place the call just now. Try again in a moment."
-              : "Add a phone number in your profile first."),
+            "Couldn't place the call just now. Try again in a moment.",
         );
         return;
       }
@@ -66,6 +63,22 @@ export function CallMeNow({
       setStatus("error");
       setMessage("Couldn't reach the line. Try again in a moment.");
     }
+  }
+
+  // No number on file: guide to settings rather than offer a button that errors
+  // after the click. Same outline weight as the live action — calm, not a scold.
+  if (!phoneOnFile) {
+    return (
+      <div className={`flex flex-col gap-2 ${className}`}>
+        <LinkButton href="/onboarding" variant="outline" size="lg">
+          <SlidersHorizontal className="size-4" strokeWidth={1.6} />
+          Add a number to be called
+        </LinkButton>
+        <p className="font-sans text-sm leading-relaxed text-marble-dim text-pretty">
+          Give me a number in settings and I can call you here.
+        </p>
+      </div>
+    );
   }
 
   if (status === "ringing") {
@@ -85,6 +98,17 @@ export function CallMeNow({
             <p className="mt-0.5 font-sans text-sm text-marble-dim">{message}</p>
           </div>
         </div>
+        {/* a quiet way back — the ringing state isn't a one-way door */}
+        <button
+          type="button"
+          onClick={() => {
+            setStatus("idle");
+            setMessage("");
+          }}
+          className="label-mono self-start text-marble-dim transition-colors hover:text-marble"
+        >
+          done
+        </button>
       </div>
     );
   }

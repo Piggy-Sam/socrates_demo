@@ -37,6 +37,15 @@ function isToday(d: Date): boolean {
   );
 }
 
+/** "08:30" → "8:30" — a human, non-padded reading of a daily-call time. */
+function readCallTime(hhmm: string | null | undefined): string | null {
+  if (!hhmm) return null;
+  const m = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(hhmm.trim());
+  if (!m) return null;
+  const hour = Number(m[1]);
+  return `${hour}:${m[2]}`;
+}
+
 const TYPE_LABEL: Record<string, string> = {
   idea: "idea",
   opinion: "opinion",
@@ -84,6 +93,15 @@ export default async function TodayPage() {
 
   const hasAnything = Boolean(todaysSummary) || recentEntries.length > 0;
 
+  // the standing daily call, said plainly in Socrates' voice — not a countdown,
+  // not a metric; just an honest line about what's arranged, with a way to change it
+  const callTime = readCallTime(profile.dailyCallTime);
+  const hasPhone = Boolean(profile.phoneE164?.trim());
+  const dailyCallLine =
+    callTime && hasPhone
+      ? `I'll call you around ${callTime} your time.`
+      : "Daily calls are off for now.";
+
   return (
     <div className="mx-auto max-w-3xl">
       {/* greeting + the quiet ways to think out loud */}
@@ -120,8 +138,19 @@ export default async function TodayPage() {
           <LinkButton href="/talk" variant="ghost" size="lg">
             Talk it through
           </LinkButton>
-          <CallMeNow phone={profile.phoneE164} />
+          <CallMeNow phone={profile.phoneE164} hasPhone={hasPhone} />
         </div>
+
+        {/* the standing daily call, stated honestly, with a quiet door to edit it */}
+        <p className="mt-5 font-sans text-sm leading-relaxed text-marble-dim">
+          {dailyCallLine}{" "}
+          <Link
+            href="/onboarding"
+            className="text-marble underline decoration-hairline-strong underline-offset-4 transition-colors hover:text-accent hover:decoration-accent"
+          >
+            {callTime && hasPhone ? "Change it" : "Set it up"}
+          </Link>
+        </p>
       </section>
 
       {/* today's distillation — clean reading */}

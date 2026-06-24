@@ -57,7 +57,7 @@ export async function POST() {
       {
         ok: false,
         error:
-          "I don't have a number for you yet. Add your phone in onboarding and I'll call.",
+          "I don't have a number for you yet. Add your phone in settings and I'll call.",
       },
       { status: 400 },
     );
