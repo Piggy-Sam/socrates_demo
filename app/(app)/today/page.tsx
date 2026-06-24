@@ -58,13 +58,27 @@ function greeting(
   return `Late one${who}.`;
 }
 
-function isToday(d: Date): boolean {
-  const now = new Date();
-  return (
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate()
-  );
+function isToday(d: Date, timezone: string | null | undefined): boolean {
+  // Compare calendar dates in the USER's timezone, not the server's (UTC on
+  // Vercel) — otherwise "today's distillation" flips off at UTC midnight rather
+  // than the person's local midnight.
+  const tz = timezone ?? "UTC";
+  try {
+    const fmt = new Intl.DateTimeFormat("en-CA", {
+      timeZone: tz,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+    return fmt.format(d) === fmt.format(new Date());
+  } catch {
+    const now = new Date();
+    return (
+      d.getFullYear() === now.getFullYear() &&
+      d.getMonth() === now.getMonth() &&
+      d.getDate() === now.getDate()
+    );
+  }
 }
 
 /** "08:30" → "8:30" — a human, non-padded reading of a daily-call time. */
@@ -174,7 +188,7 @@ export default async function TodayPage() {
 
   const latestSummary: Summary | undefined = latestSummaryRows[0];
   const todaysSummary =
-    latestSummary && isToday(new Date(latestSummary.periodEnd))
+    latestSummary && isToday(new Date(latestSummary.periodEnd), profile.timezone)
       ? latestSummary
       : undefined;
 
