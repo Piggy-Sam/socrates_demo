@@ -52,7 +52,7 @@ const faceH = (s) => FACE.h * s;
 // ── thumbnail 1: face + wordmark (1200 x 630) ────────────────────────────────
 function wordmarkSvg() {
   const W = 1200,
-    H = 630;
+    H = 760; // taller canvas → more room top + bottom
   const s = 9.4; // px per cell → ~470px tall face
   const ox = 78,
     oy = (H - faceH(s)) / 2;
@@ -64,14 +64,16 @@ function wordmarkSvg() {
   const adv = wm * 0.6 + 4; // glyph advance incl. letter-spacing
   const aiGap = 22;
   const wordmarkW = 8 * adv + aiGap + 2 * adv; // SOCRATES + gap + AI
+  // shift the text block down with the (vertically-centred) face
+  const dy = (H - 630) / 2;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
   <rect width="${W}" height="${H}" fill="${INK}"/>
   <g>${faceGroup(s, ox, oy)}</g>
-  <text x="${tx}" y="246" font-family="${mono}" font-size="15" letter-spacing="3" fill="${MARBLE_DIM}">&#8250; AN INSTRUMENT FOR THE EXAMINED LIFE</text>
-  <text x="${tx}" y="316" font-family="${mono}" font-size="${wm}" font-weight="600" letter-spacing="4" fill="${MARBLE}">SOCRATES<tspan dx="${aiGap}" fill="${ACCENT}">AI</tspan></text>
-  <rect x="${(tx + wordmarkW + 8).toFixed(0)}" y="266" width="30" height="54" fill="${ACCENT}"/>
-  <text x="${tx}" y="392" font-family="${mono}" font-size="27" letter-spacing="0.5" fill="${MARBLE}">AI that sharpens your thinking</text>
-  <text x="${tx}" y="432" font-family="${mono}" font-size="27" letter-spacing="0.5" fill="${MARBLE}">instead of replacing it.</text>
+  <text x="${tx}" y="${246 + dy}" font-family="${mono}" font-size="15" letter-spacing="3" fill="${MARBLE_DIM}">&#8250; AN INSTRUMENT FOR THE EXAMINED LIFE</text>
+  <text x="${tx}" y="${316 + dy}" font-family="${mono}" font-size="${wm}" font-weight="600" letter-spacing="4" fill="${MARBLE}">SOCRATES<tspan dx="${aiGap}" fill="${ACCENT}">AI</tspan></text>
+  <rect x="${(tx + wordmarkW + 8).toFixed(0)}" y="${266 + dy}" width="30" height="54" fill="${ACCENT}"/>
+  <text x="${tx}" y="${392 + dy}" font-family="${mono}" font-size="27" letter-spacing="0.5" fill="${MARBLE}">AI that sharpens your thinking</text>
+  <text x="${tx}" y="${432 + dy}" font-family="${mono}" font-size="27" letter-spacing="0.5" fill="${MARBLE}">instead of replacing it.</text>
 </svg>`;
 }
 
