@@ -9,6 +9,7 @@
 import { NextResponse } from "next/server";
 import { desc, eq } from "drizzle-orm";
 import { getAuthIdentity, getProfile } from "@/lib/auth";
+import { CALLS_OWNER_USER_ID } from "@/lib/demo";
 import { db } from "@/lib/db/client";
 import { entries } from "@/lib/db/schema";
 import { startOutboundCall } from "@/lib/elevenlabs/calls";
@@ -44,14 +45,19 @@ export async function POST() {
     );
   }
 
-  // Demo: NEVER place a real outbound call — it would ring the real phone on the
-  // seeded profile. Return a calm, non-error response the UI can show as an info
-  // note (200 so the client doesn't render a failure), pointing to "Talk now".
-  if (identity.isDemo) {
+  // Outbound calls only work for the owner's Twilio-verified number (a trial
+  // account can dial exactly one number). So a real call is placed ONLY for the
+  // owner signed into their own account — never for a demo session, never for any
+  // other signed-in user (and never from a demo session, which would ring the
+  // owner's phone). Everyone else gets a friendly "no Twilio budget" note that
+  // points at the in-browser "Talk now" (200 so the UI shows it as info, not a
+  // failure). The `blocked` flag tells the button to open the support pop-up.
+  if (identity.isDemo || identity.userId !== CALLS_OWNER_USER_ID) {
     return NextResponse.json({
       ok: false,
-      demo: true,
-      error: "Calls are off in the demo — try Talk now instead.",
+      blocked: true,
+      error:
+        "Sorry — I don't got the money to pay for Twilio, so Socrates AI can't give you a call yet…",
     });
   }
 
