@@ -10,6 +10,7 @@ import { requireUser, getProfile } from "@/lib/auth";
 import { db } from "@/lib/db/client";
 import { entries } from "@/lib/db/schema";
 import { env } from "@/lib/env";
+import { generateOpener } from "@/lib/llm/opener";
 
 export const runtime = "nodejs";
 // Always mint a fresh token; never cache.
@@ -31,6 +32,9 @@ export type VoiceTokenResponse = {
   dynamicVariables: {
     user_id: string;
     display_name: string;
+    /** A personalized, dynamically-generated opener; the agent's dashboard
+     * first-message is "{{first_message}}", so this becomes Socrates' first line. */
+    first_message: string;
     recent_thread?: string;
   };
 };
@@ -114,16 +118,20 @@ export async function POST() {
     console.warn("[voice/token] signed-url mint threw", err);
   }
 
-  // Best-effort continuity hook: a one-line nudge from the user's most recent
-  // thought so the agent can open on a live thread, not "how was your day".
-  // Never block the call on this.
+  // Best-effort continuity: a personalized opener (generated from the user's own
+  // standing context) plus a one-line nudge from their most recent thought. The
+  // opener self-falls-back and is timeout-guarded, so it never blocks the call.
   const profile = await getProfile(user.id).catch(() => null);
   const displayName = profile?.displayName ?? "friend";
-  const recentThread = await mostRecentThread(user.id);
+  const [firstMessage, recentThread] = await Promise.all([
+    generateOpener(user.id, "voice", displayName),
+    mostRecentThread(user.id),
+  ]);
 
   const dynamicVariables: VoiceTokenResponse["dynamicVariables"] = {
     user_id: user.id,
     display_name: displayName,
+    first_message: firstMessage,
     ...(recentThread ? { recent_thread: recentThread } : {}),
   };
 

@@ -6,6 +6,7 @@
 import { env } from "@/lib/env";
 import { openai } from "@/lib/openai";
 import { getRagContext } from "@/lib/rag";
+import { getStandingContext } from "@/lib/llm/context";
 import { buildSystemPrompt } from "@/lib/socrates/system-prompt";
 import type {
   ChatCompletion,
@@ -32,6 +33,13 @@ const VOICE_RAG_RACE_MS = 1200;
 // Text chat has no live-call urgency; allow a generous budget for a cold DB.
 const TEXT_RAG_RACE_MS = 8000;
 
+// Standing context (recurring threads / latest distillation / open questions) is
+// always-on memory fetched in parallel with RAG. Its own per-query timeouts live
+// in lib/llm/context.ts; this is the outer ceiling for the whole fan-out so it can
+// never outlast the turn's RAG budget. Voice stays tight; text can take longer.
+const VOICE_STANDING_RACE_MS = 900;
+const TEXT_STANDING_RACE_MS = 4000;
+
 export function openaiError(
   message: string,
   status: number,
@@ -53,6 +61,22 @@ async function ragWithTimeout(
   try {
     return await Promise.race([
       getRagContext(userId, query),
+      new Promise<string>((resolve) => setTimeout(() => resolve(""), ms)),
+    ]);
+  } catch {
+    return "";
+  }
+}
+
+/** Always-on standing memory, bounded by an outer race so a slow DB never stalls
+ * the first token. getStandingContext is already failure-tolerant; this caps it. */
+async function standingWithTimeout(
+  userId: string,
+  ms: number,
+): Promise<string> {
+  try {
+    return await Promise.race([
+      getStandingContext(userId, { budgetMs: ms }),
       new Promise<string>((resolve) => setTimeout(() => resolve(""), ms)),
     ]);
   } catch {
@@ -92,15 +116,30 @@ export async function respondAsBrain(
 
   const history = sanitizeMessages(body.messages);
   const ragQuery = buildRagQuery(history);
-  const ragContext =
-    userId && ragQuery
-      ? await ragWithTimeout(
+
+  // Fetch turn-relevant RAG and always-on standing memory CONCURRENTLY, each under
+  // its own race ceiling, so the two memory reads share wall-clock rather than
+  // stacking it before the first token. Both gracefully resolve "" on timeout.
+  const [ragContext, standingContext] = userId
+    ? await Promise.all([
+        ragQuery
+          ? ragWithTimeout(
+              userId,
+              ragQuery,
+              isVoiceCaller ? VOICE_RAG_RACE_MS : TEXT_RAG_RACE_MS,
+            )
+          : Promise.resolve(""),
+        standingWithTimeout(
           userId,
-          ragQuery,
-          isVoiceCaller ? VOICE_RAG_RACE_MS : TEXT_RAG_RACE_MS,
-        )
-      : "";
-  const systemPrompt = buildSystemPrompt(modality, ragContext);
+          isVoiceCaller ? VOICE_STANDING_RACE_MS : TEXT_STANDING_RACE_MS,
+        ),
+      ])
+    : ["", ""];
+
+  const systemPrompt = buildSystemPrompt(modality, {
+    ragContext,
+    standingContext,
+  });
 
   const messages: ChatCompletionMessageParam[] = [
     { role: "system", content: systemPrompt },

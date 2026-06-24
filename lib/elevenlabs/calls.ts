@@ -56,16 +56,21 @@ async function lookupOutboundPhoneNumberId(): Promise<string | null> {
 
 /**
  * Dynamic variables handed to the agent at call start. They become
- * `{{user_id}}`, `{{display_name}}`, `{{recent_thread}}` inside the agent's
- * prompt/first message, and `user_id` is what the brain route reads to scope RAG.
- * Values must be primitives (string/number/boolean) per the ElevenLabs schema.
+ * `{{user_id}}`, `{{display_name}}`, `{{first_message}}`, `{{recent_thread}}`
+ * inside the agent's prompt/first message, and `user_id` is what the brain route
+ * reads to scope RAG. The agent's dashboard first-message is set to
+ * "{{first_message}}", so the personalized opener we generate becomes Socrates'
+ * literal first spoken line. Values must be primitives (string/number/boolean)
+ * per the ElevenLabs schema.
  */
 export type CallDynamicVariables = {
   user_id: string;
   display_name: string;
   /** A one-line continuity hook from the user's most recent thought, for the callback open. */
   recent_thread: string;
-  [key: string]: string | number | boolean;
+  /** A personalized, dynamically-generated opening line ("{{first_message}}"). */
+  first_message?: string;
+  [key: string]: string | number | boolean | undefined;
 };
 
 export type StartOutboundCallArgs = {
