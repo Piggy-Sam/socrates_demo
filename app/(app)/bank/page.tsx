@@ -7,6 +7,7 @@ import { db } from "@/lib/db/client";
 import { entries } from "@/lib/db/schema";
 import { requireProfile } from "@/lib/auth";
 import { BankView, type BankEntry } from "@/components/bank/bank-view";
+import { PageHeader } from "@/components/ui/page-header";
 import type { EntryType } from "@/lib/constellation";
 
 export const dynamic = "force-dynamic";
@@ -37,17 +38,12 @@ export default async function BankPage() {
 
   return (
     <div className="mx-auto max-w-5xl">
-      <header className="pb-7">
-        <p className="label-mono mb-3">The field of your thinking</p>
-        <h1 className="font-display text-4xl font-light tracking-tight text-marble sm:text-5xl">
-          The bank
-        </h1>
-        <p className="mt-4 max-w-xl font-sans text-lg leading-relaxed text-marble-dim text-pretty">
-          Everything you&apos;ve worked out here, kept. Each thought a point;
-          the ones you keep returning to plot brighter and larger, until the
-          shape of your thinking stands out on its own.
-        </p>
-      </header>
+      <PageHeader
+        className="pb-7"
+        kicker="The field of your thinking"
+        title="The bank"
+        intro="Everything you've worked out here, kept. Each thought a point; the ones you keep returning to plot brighter and larger, until the shape of your thinking stands out on its own."
+      />
 
       <BankView entries={bankEntries} />
     </div>

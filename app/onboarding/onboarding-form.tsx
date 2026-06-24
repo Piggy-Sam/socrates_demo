@@ -110,7 +110,7 @@ function SubmitButton() {
   return (
     <Button
       type="submit"
-      variant="gold"
+      variant="accent"
       size="lg"
       disabled={pending}
       className="w-full"

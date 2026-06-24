@@ -23,6 +23,12 @@ export type BankEntry = {
 
 type Mode = "field" | "list";
 
+// One theme-chip look, shared by the field card (static) and the list rows
+// (tappable) so a theme reads identically wherever it appears. The interactive
+// variant just layers a hover-to-accent on top of this base.
+const THEME_CHIP =
+  "rounded-sm border border-hairline px-2 py-0.5 font-mono-display text-xs tracking-wide text-marble-dim";
+
 function timeReadout(iso: string): string {
   return new Date(iso)
     .toLocaleString("en-US", {
@@ -246,16 +252,13 @@ export function BankView({ entries }: { entries: BankEntry[] }) {
                     <X className="size-4" strokeWidth={1.6} />
                   </button>
                 </div>
-                <p className="mt-3 font-sans text-xl leading-relaxed text-marble text-pretty">
+                <p className="mt-3 font-sans text-lg leading-relaxed text-marble text-pretty">
                   {selected.content}
                 </p>
                 {selected.themes?.length ? (
                   <div className="mt-4 flex flex-wrap gap-1.5">
                     {selected.themes.map((t) => (
-                      <span
-                        key={t}
-                        className="rounded-sm border border-hairline px-2 py-0.5 font-mono-display text-xs tracking-wide text-marble-dim"
-                      >
+                      <span key={t} className={THEME_CHIP}>
                         {t}
                       </span>
                     ))}
@@ -406,7 +409,7 @@ function EntryRow({
                 key={t}
                 type="button"
                 onClick={() => onTheme(t)}
-                className="rounded-sm border border-hairline px-2 py-0.5 font-mono-display text-xs tracking-wide text-marble-dim transition-colors hover:border-accent hover:text-accent"
+                className={`${THEME_CHIP} transition-colors hover:border-accent hover:text-accent`}
               >
                 {t}
               </button>

@@ -70,17 +70,13 @@ export default function Home() {
             <Wordmark size="xl" href={null} withStar={false} />
           </div>
 
-          <h1 className="mt-7 font-display text-xl font-light leading-relaxed tracking-tight text-marble-dim sm:text-[1.7rem]">
-            <span className="block sm:whitespace-nowrap">
-              It doesn&apos;t hand you answers.
-            </span>
-            <span className="block text-marble sm:whitespace-nowrap">
-              It sharpens your own.
-            </span>
+          <h1 className="mt-7 text-balance font-display text-xl font-light leading-relaxed tracking-tight text-marble-dim sm:text-[1.7rem]">
+            <span className="block">It doesn&apos;t hand you answers.</span>
+            <span className="block text-marble">It sharpens your own.</span>
           </h1>
 
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row">
-            <LinkButton href="/login" size="lg" variant="gold">
+            <LinkButton href="/login" size="lg" variant="accent">
               Begin
             </LinkButton>
             <LinkButton href="/about" size="lg" variant="ghost">

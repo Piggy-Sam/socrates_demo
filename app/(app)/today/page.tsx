@@ -125,7 +125,7 @@ export default async function TodayPage() {
         </p>
         {/* the page's one accent: the prompt + cursor — an instrument waiting
             for your thinking, not a voice waiting to talk */}
-        <h1 className="flex items-baseline font-display text-4xl font-light leading-tight tracking-tight text-marble sm:text-5xl">
+        <h1 className="flex items-baseline font-display text-3xl font-light leading-tight tracking-tight text-marble sm:text-4xl">
           <span aria-hidden className="mr-3 text-accent">
             &rsaquo;
           </span>

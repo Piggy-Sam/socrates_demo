@@ -5,8 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ConversationProvider } from "@elevenlabs/react";
 import { Mic, MicOff, PhoneOff } from "lucide-react";
 import { BreathingStar } from "@/components/sky/breathing-star";
-import { LinkButton } from "@/components/ui/button";
-import { emitJolt } from "@/lib/dots";
+import { Button, LinkButton } from "@/components/ui/button";
 import {
   useSocratesCall,
   type CallPhase,
@@ -289,28 +288,20 @@ function StartControl({
         ? "Try again"
         : "Talk to Socrates";
 
-  // A press-commit: hovering (mouse) or pressing (touch) discharges a jolt from
-  // the button's centre into the dot field — the same delight as the gold CTAs.
-  // emitJolt is a no-op under prefers-reduced-motion.
-  const jolt = (el: HTMLElement | null, strength: number) => {
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    emitJolt({ x: r.left + r.width / 2, y: r.top + r.height / 2, strength });
-  };
-
+  // The shared accent Button so corner-radius/easing/disabled match the other
+  // CTAs; it also carries the press-commit jolt for the accent variant. A
+  // full-bleed thumb target on phones (xl height, rounded-md, max-w-xs).
   return (
-    <button
+    <Button
       type="button"
+      variant="accent"
+      size="xl"
       onClick={onStart}
-      onPointerEnter={(e) => {
-        if (e.pointerType === "mouse") jolt(e.currentTarget, 0.85);
-      }}
-      onPointerDown={(e) => jolt(e.currentTarget, 1.1)}
       disabled={connecting}
-      className="flex h-14 w-full max-w-xs items-center justify-center rounded-md bg-accent-btn px-8 font-sans text-base font-medium text-white transition-all duration-200 ease-[cubic-bezier(0.2,0.8,0.2,1)] active:translate-y-px disabled:opacity-60 disabled:pointer-events-none"
+      className="w-full max-w-xs rounded-md"
     >
       {connecting ? "connecting…" : label}
-    </button>
+    </Button>
   );
 }
 
@@ -378,11 +369,14 @@ function RoundControl({
   active?: boolean;
   variant?: "default" | "end";
 }) {
+  // The active (muted) state stays neutral marble/hairline — the single rationed
+  // blue belongs to the orb and the primary "Talk" action, not a toggle. A
+  // filled raised face + aria-pressed carries the "on" state without the accent.
   const tone =
     variant === "end"
       ? "border-hairline-strong text-marble hover:border-marble hover:bg-raised-2"
       : active
-        ? "border-accent bg-accent/10 text-accent"
+        ? "border-marble bg-raised-2 text-marble"
         : "border-hairline-strong text-marble hover:border-marble hover:bg-raised-2";
 
   return (

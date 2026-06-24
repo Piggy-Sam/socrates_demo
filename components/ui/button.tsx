@@ -4,15 +4,15 @@ import { forwardRef, useCallback } from "react";
 import Link from "next/link";
 import { emitJolt } from "@/lib/dots";
 
-type Variant = "gold" | "outline" | "ghost";
-type Size = "sm" | "md" | "lg";
+type Variant = "accent" | "outline" | "ghost";
+type Size = "sm" | "md" | "lg" | "xl";
 
 const VARIANTS: Record<Variant, string> = {
   // primary action — crisp solid accent (rationed), no glow. accent-btn fill
   // keeps white-on-blue at WCAG AA in both themes. Instead of a flat opacity
   // hover, a press discharges a jolt into the surrounding dot field (see
   // useJolt) so the instrument acknowledges intent — within size/opacity/colour.
-  gold: "bg-accent-btn text-white font-medium active:translate-y-px",
+  accent: "bg-accent-btn text-white font-medium active:translate-y-px",
   outline:
     "border border-hairline-strong text-marble hover:border-accent hover:text-accent bg-transparent",
   ghost: "text-marble-dim hover:text-marble hover:bg-raised-2 bg-transparent",
@@ -22,6 +22,8 @@ const SIZES: Record<Size, string> = {
   sm: "h-8 px-3 text-sm gap-1.5",
   md: "h-10 px-5 text-sm gap-2",
   lg: "h-12 px-7 text-base gap-2.5",
+  // a taller thumb-target for full-bleed mobile CTAs (the voice "Talk" action)
+  xl: "h-14 px-8 text-base gap-2.5",
 };
 
 const BASE =
@@ -35,25 +37,25 @@ function joltFromEl(el: HTMLElement | null, strength = 1) {
   emitJolt({ x: r.left + r.width / 2, y: r.top + r.height / 2, strength });
 }
 
-// Wires the gold press-commit: a ripple FROM the button on pointerenter (mouse,
-// to guide the eye) and pointerdown (so touch — which never hovers — still
-// discharges on press). Returns no-op handlers for non-gold variants.
+// Wires the accent press-commit: a ripple FROM the button on pointerenter
+// (mouse, to guide the eye) and pointerdown (so touch — which never hovers —
+// still discharges on press). Returns no-op handlers for non-accent variants.
 function useJolt(variant: Variant) {
   const onPointerEnter = useCallback(
     (e: React.PointerEvent<HTMLElement>) => {
-      if (variant !== "gold" || e.pointerType !== "mouse") return;
+      if (variant !== "accent" || e.pointerType !== "mouse") return;
       joltFromEl(e.currentTarget, 0.85);
     },
     [variant],
   );
   const onPointerDown = useCallback(
     (e: React.PointerEvent<HTMLElement>) => {
-      if (variant !== "gold") return;
+      if (variant !== "accent") return;
       joltFromEl(e.currentTarget, 1.1);
     },
     [variant],
   );
-  return variant === "gold" ? { onPointerEnter, onPointerDown } : {};
+  return variant === "accent" ? { onPointerEnter, onPointerDown } : {};
 }
 
 type BaseProps = { variant?: Variant; size?: Size; className?: string };
@@ -62,7 +64,7 @@ type ButtonProps = BaseProps &
   React.ButtonHTMLAttributes<HTMLButtonElement>;
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ variant = "gold", size = "md", className = "", ...props }, ref) => {
+  ({ variant = "accent", size = "md", className = "", ...props }, ref) => {
     const jolt = useJolt(variant);
     return (
       <button
@@ -80,7 +82,7 @@ type LinkButtonProps = BaseProps &
   React.ComponentProps<typeof Link>;
 
 export function LinkButton({
-  variant = "gold",
+  variant = "accent",
   size = "md",
   className = "",
   ...props

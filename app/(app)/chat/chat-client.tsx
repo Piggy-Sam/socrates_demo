@@ -261,6 +261,18 @@ export function ChatClient({
         {announce}
       </p>
 
+      {/* compact header — joins the family of page titles (one mono kicker with
+          the terminal caret, one marble title). Kept slim so it sits above the
+          transcript without competing with the empty-state greeting. */}
+      <header className="mb-5 border-b border-hairline pb-4">
+        <p className="label-mono mb-2">
+          <span className="text-accent">&rsaquo;</span> chat
+        </p>
+        <h1 className="font-display text-xl font-light tracking-tight text-marble sm:text-2xl">
+          Think it through in writing.
+        </h1>
+      </header>
+
       {/* transcript */}
       <div
         ref={scrollRef}
@@ -315,7 +327,7 @@ export function ChatClient({
           <div className="flex flex-1 items-start gap-2 rounded-md border border-hairline bg-raised px-3 transition-colors focus-within:border-accent">
             <span
               aria-hidden
-              className="select-none pt-3 font-mono-display text-base leading-none text-accent"
+              className="select-none pt-3 font-mono-display text-base leading-none text-marble-dim"
             >
               &rsaquo;
             </span>
@@ -332,7 +344,7 @@ export function ChatClient({
           </div>
           <Button
             type="button"
-            variant="gold"
+            variant="accent"
             size="lg"
             onClick={() => void send()}
             disabled={streaming || !draft.trim()}
@@ -377,7 +389,7 @@ function TurnBlock({
         </div>
       ) : (
         <div className="flex flex-col items-start">
-          <p className="label-mono mb-1.5 flex items-center gap-1.5 text-accent">
+          <p className="label-mono mb-1.5 flex items-center gap-1.5 text-marble-dim">
             <StarMark size={9} />
             Socrates
           </p>
