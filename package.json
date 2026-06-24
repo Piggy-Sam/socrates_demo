@@ -9,7 +9,11 @@
     "lint": "eslint",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node scripts/migrate.mjs",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "provision-demo": "node scripts/provision-demo.mjs",
+    "seed:demo": "node scripts/seed-demo.mjs",
+    "seed:me": "node scripts/seed-demo.mjs c996ad01-7f17-4c11-8c1d-d65baf4249e3",
+    "reseed": "npm run seed:demo && npm run seed:me"
   },
   "dependencies": {
     "@elevenlabs/client": "^1.12.0",

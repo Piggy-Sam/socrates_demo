@@ -4,8 +4,18 @@ import { publicEnv } from "@/lib/env";
 import { DEMO_COOKIE } from "@/lib/demo";
 
 // Public routes that don't require a session. (/about is the renamed /design
-// reference; /reset-password must load so a recovery link can set a password.)
-const PUBLIC_PATHS = ["/", "/login", "/auth", "/about", "/reset-password"];
+// reference; /reset-password must load so a recovery link can set a password;
+// /pitch is the public pitch deck and /api/calls/pitch is the public on-stage
+// "call my phone" endpoint — both must be reachable without a session.)
+const PUBLIC_PATHS = [
+  "/",
+  "/login",
+  "/auth",
+  "/about",
+  "/reset-password",
+  "/pitch",
+  "/api/calls/pitch",
+];
 
 /** Refresh the auth session on every request and gate the app routes. */
 export async function updateSession(request: NextRequest) {
