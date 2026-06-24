@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { Search, Grid3x3, List, X } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -10,6 +10,7 @@ import {
   type EntryType,
   type SkyStar,
 } from "@/lib/constellation";
+import { searchBankByMeaning } from "@/app/(app)/bank/actions";
 
 // One entry, as the bank page hands it to the client (dates serialized).
 export type BankEntry = {
@@ -18,11 +19,6 @@ export type BankEntry = {
   content: string;
   themes: string[] | null;
   createdAt: string;
-};
-
-export type BankTheme = {
-  label: string;
-  entryCount: number;
 };
 
 type Mode = "field" | "list";
@@ -94,17 +90,18 @@ function computeStars(entries: BankEntry[]): SkyStar[] {
   });
 }
 
-export function BankView({
-  entries,
-  themes,
-}: {
-  entries: BankEntry[];
-  themes: BankTheme[];
-}) {
+export function BankView({ entries }: { entries: BankEntry[] }) {
   const reduce = useReducedMotion();
   const [mode, setMode] = useState<Mode>("field");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  // Only-open-questions lens — a quiet way to revisit what's still unresolved.
+  const [openOnly, setOpenOnly] = useState(false);
+  // Semantic recall: the ranked ids returned by submitting the query (Enter).
+  // While set, the list is ordered by meaning instead of by day. Cleared the
+  // moment the query text changes, so type-ahead substring filtering resumes.
+  const [meaningRanked, setMeaningRanked] = useState<string[] | null>(null);
+  const [searching, startSearch] = useTransition();
 
   const stars = useMemo(() => computeStars(entries), [entries]);
   const byId = useMemo(
@@ -113,18 +110,42 @@ export function BankView({
   );
   const selected = selectedId ? byId.get(selectedId) : undefined;
 
+  const questionCount = useMemo(
+    () => entries.filter((e) => e.type === "question").length,
+    [entries],
+  );
+
+  // Instant type-ahead substring filter (always on as you type), then the
+  // open-questions lens. Semantic ranking is applied separately, below.
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return entries;
-    return entries.filter(
-      (e) =>
-        e.content.toLowerCase().includes(q) ||
-        e.type.toLowerCase().includes(q) ||
-        (e.themes ?? []).some((t) => t.toLowerCase().includes(q)),
-    );
-  }, [entries, query]);
+    let out = entries;
+    if (q) {
+      out = out.filter(
+        (e) =>
+          e.content.toLowerCase().includes(q) ||
+          e.type.toLowerCase().includes(q) ||
+          (e.themes ?? []).some((t) => t.toLowerCase().includes(q)),
+      );
+    }
+    if (openOnly) out = out.filter((e) => e.type === "question");
+    return out;
+  }, [entries, query, openOnly]);
 
-  // Group filtered entries by day (already newest-first from the server).
+  // When a semantic search has resolved, present its ranked entries (in rank
+  // order, still passed through the open-questions lens) instead of the
+  // day-grouped substring view.
+  const ranked = useMemo(() => {
+    if (!meaningRanked) return null;
+    const out: BankEntry[] = [];
+    for (const id of meaningRanked) {
+      const e = byId.get(id);
+      if (e && (!openOnly || e.type === "question")) out.push(e);
+    }
+    return out;
+  }, [meaningRanked, byId, openOnly]);
+
+  // Group the substring-filtered entries by day (already newest-first).
   const grouped = useMemo(() => {
     const groups: { day: string; items: BankEntry[] }[] = [];
     for (const e of filtered) {
@@ -135,6 +156,26 @@ export function BankView({
     }
     return groups;
   }, [filtered]);
+
+  function onQueryChange(value: string) {
+    setQuery(value);
+    // Editing the query drops back to the live substring view immediately.
+    if (meaningRanked) setMeaningRanked(null);
+  }
+
+  // Escalate to semantic recall on submit — finds thoughts that share a sense,
+  // not just a string. Best-effort; on failure the substring view stands.
+  function onSubmitSearch() {
+    const q = query.trim();
+    if (!q) {
+      setMeaningRanked(null);
+      return;
+    }
+    startSearch(async () => {
+      const ids = await searchBankByMeaning(q);
+      setMeaningRanked(ids);
+    });
+  }
 
   if (entries.length === 0) {
     return (
@@ -232,34 +273,88 @@ export function BankView({
                 animate={{ opacity: 1 }}
                 className="mt-5 font-sans text-sm text-marble-dim"
               >
-                Each dot is a thought. Rules connect what recurs. Select one to
-                read it.
+                Each dot is a thought; the ones you keep returning to plot
+                brighter and larger. Select one to read it.
               </motion.p>
             )}
           </AnimatePresence>
         </div>
       ) : (
         <div className="mt-6">
-          {/* search — terminal cue, on a single hairline rule */}
-          <div className="relative mb-8 max-w-md border-b border-hairline focus-within:border-accent">
-            <Search
-              className="pointer-events-none absolute left-1 top-1/2 size-4 -translate-y-1/2 text-marble-dim"
-              strokeWidth={1.6}
-              aria-hidden
-            />
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search your thoughts and threads…"
-              aria-label="Search your thoughts"
-              className="h-10 w-full rounded-sm bg-transparent pl-7 pr-3 font-sans text-sm text-marble placeholder:text-marble-dim focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
-            />
-          </div>
+          {/* search — terminal cue, on a single hairline rule. Type to filter
+              by substring; press Enter to escalate to search-by-meaning. */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              onSubmitSearch();
+            }}
+            className="mb-3 max-w-md"
+          >
+            <div className="relative border-b border-hairline focus-within:border-accent">
+              <Search
+                className="pointer-events-none absolute left-1 top-1/2 size-4 -translate-y-1/2 text-marble-dim"
+                strokeWidth={1.6}
+                aria-hidden
+              />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => onQueryChange(e.target.value)}
+                placeholder="Search your thoughts and threads…"
+                aria-label="Search your thoughts"
+                enterKeyHint="search"
+                className="h-10 w-full rounded-sm bg-transparent pl-7 pr-3 font-sans text-sm text-marble placeholder:text-marble-dim focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
+              />
+            </div>
+            {query.trim() ? (
+              <p className="mt-1.5 font-mono-display text-[0.6875rem] uppercase tracking-[0.12em] text-marble-dim">
+                {searching
+                  ? "searching by meaning…"
+                  : meaningRanked
+                    ? "by meaning · edit to filter live"
+                    : "↵ search by meaning"}
+              </p>
+            ) : null}
+          </form>
 
-          {filtered.length === 0 ? (
+          {/* lens: revisit what's still open. A quiet chip, not a tally. */}
+          {questionCount > 0 ? (
+            <div className="mb-8 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setOpenOnly((v) => !v)}
+                aria-pressed={openOnly}
+                className={`inline-flex items-center gap-1.5 rounded-sm border px-2.5 py-1 font-mono-display text-xs uppercase tracking-[0.12em] transition-colors ${
+                  openOnly
+                    ? "border-accent text-accent-strong"
+                    : "border-hairline text-marble-dim hover:border-accent hover:text-marble"
+                }`}
+              >
+                <span aria-hidden>{TYPE_GLYPH.question}</span>
+                Open questions
+              </button>
+            </div>
+          ) : null}
+
+          {ranked ? (
+            ranked.length === 0 ? (
+              <p className="font-sans text-marble-dim">
+                Nothing close in meaning to &ldquo;{query}&rdquo;.
+              </p>
+            ) : (
+              <div className="border-t border-hairline">
+                <ul className="space-y-7 py-7">
+                  {ranked.map((e) => (
+                    <EntryRow key={e.id} entry={e} onTheme={setQuery} />
+                  ))}
+                </ul>
+              </div>
+            )
+          ) : filtered.length === 0 ? (
             <p className="font-sans text-marble-dim">
-              Nothing matches &ldquo;{query}&rdquo;.
+              {openOnly && !query.trim()
+                ? "No open questions right now."
+                : `Nothing matches “${query}”.`}
             </p>
           ) : (
             <div className="border-t border-hairline">
@@ -271,34 +366,7 @@ export function BankView({
                   <p className="label-mono mb-5">{group.day}</p>
                   <ul className="space-y-7">
                     {group.items.map((e) => (
-                      <li key={e.id} className="grid gap-3 sm:grid-cols-[10rem_1fr]">
-                        <p className="label-mono flex items-center gap-1.5 sm:pt-1">
-                          <span aria-hidden>{TYPE_GLYPH[e.type]}</span>
-                          {e.type} · {timeReadout(e.createdAt)}
-                        </p>
-                        <div>
-                          <p className="font-sans text-lg leading-relaxed text-marble text-pretty">
-                            {e.content}
-                          </p>
-                          {e.themes?.length ? (
-                            <div className="mt-2.5 flex flex-wrap gap-1.5">
-                              {e.themes.map((t) => (
-                                <button
-                                  key={t}
-                                  type="button"
-                                  onClick={() => setQuery(t)}
-                                  className="rounded-sm border border-hairline px-2 py-0.5 font-mono-display text-xs tracking-wide text-marble-dim transition-colors hover:border-accent hover:text-accent"
-                                >
-                                  {t}
-                                </button>
-                              ))}
-                            </div>
-                          ) : null}
-                          <div className="mt-3">
-                            <PressOnThis entryId={e.id} />
-                          </div>
-                        </div>
-                      </li>
+                      <EntryRow key={e.id} entry={e} onTheme={setQuery} />
                     ))}
                   </ul>
                 </section>
@@ -308,6 +376,48 @@ export function BankView({
         </div>
       )}
     </div>
+  );
+}
+
+// One entry in the list view — shared by the day-grouped and the
+// search-by-meaning renderings so they stay identical. Tapping a theme drops it
+// into the search box (substring filter); "Press on this" closes the loop.
+function EntryRow({
+  entry: e,
+  onTheme,
+}: {
+  entry: BankEntry;
+  onTheme: (theme: string) => void;
+}) {
+  return (
+    <li className="grid gap-3 sm:grid-cols-[10rem_1fr]">
+      <p className="label-mono flex items-center gap-1.5 sm:pt-1">
+        <span aria-hidden>{TYPE_GLYPH[e.type]}</span>
+        {e.type} · {timeReadout(e.createdAt)}
+      </p>
+      <div>
+        <p className="font-sans text-lg leading-relaxed text-marble text-pretty">
+          {e.content}
+        </p>
+        {e.themes?.length ? (
+          <div className="mt-2.5 flex flex-wrap gap-1.5">
+            {e.themes.map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => onTheme(t)}
+                className="rounded-sm border border-hairline px-2 py-0.5 font-mono-display text-xs tracking-wide text-marble-dim transition-colors hover:border-accent hover:text-accent"
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        <div className="mt-3">
+          <PressOnThis entryId={e.id} />
+        </div>
+      </div>
+    </li>
   );
 }
 

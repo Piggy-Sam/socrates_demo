@@ -4,13 +4,9 @@
 
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { entries, themes } from "@/lib/db/schema";
+import { entries } from "@/lib/db/schema";
 import { requireProfile } from "@/lib/auth";
-import {
-  BankView,
-  type BankEntry,
-  type BankTheme,
-} from "@/components/bank/bank-view";
+import { BankView, type BankEntry } from "@/components/bank/bank-view";
 import type { EntryType } from "@/lib/constellation";
 
 export const dynamic = "force-dynamic";
@@ -18,24 +14,18 @@ export const dynamic = "force-dynamic";
 export default async function BankPage() {
   const { userId } = await requireProfile();
 
-  const [entryRows, themeRows] = await Promise.all([
-    db
-      .select({
-        id: entries.id,
-        type: entries.type,
-        content: entries.content,
-        themes: entries.themes,
-        createdAt: entries.createdAt,
-      })
-      .from(entries)
-      .where(eq(entries.userId, userId))
-      .orderBy(desc(entries.createdAt))
-      .limit(400),
-    db
-      .select({ label: themes.label, entryCount: themes.entryCount })
-      .from(themes)
-      .where(eq(themes.userId, userId)),
-  ]);
+  const entryRows = await db
+    .select({
+      id: entries.id,
+      type: entries.type,
+      content: entries.content,
+      themes: entries.themes,
+      createdAt: entries.createdAt,
+    })
+    .from(entries)
+    .where(eq(entries.userId, userId))
+    .orderBy(desc(entries.createdAt))
+    .limit(400);
 
   const bankEntries: BankEntry[] = entryRows.map((e) => ({
     id: e.id,
@@ -43,11 +33,6 @@ export default async function BankPage() {
     content: e.content,
     themes: e.themes ?? null,
     createdAt: e.createdAt.toISOString(),
-  }));
-
-  const bankThemes: BankTheme[] = themeRows.map((t) => ({
-    label: t.label,
-    entryCount: t.entryCount ?? 0,
   }));
 
   return (
@@ -59,11 +44,12 @@ export default async function BankPage() {
         </h1>
         <p className="mt-4 max-w-xl font-sans text-lg leading-relaxed text-marble-dim text-pretty">
           Everything you&apos;ve worked out here, kept. Each thought a point;
-          the threads you return to draw the rules between them.
+          the ones you keep returning to plot brighter and larger, until the
+          shape of your thinking stands out on its own.
         </p>
       </header>
 
-      <BankView entries={bankEntries} themes={bankThemes} />
+      <BankView entries={bankEntries} />
     </div>
   );
 }

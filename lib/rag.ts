@@ -8,6 +8,7 @@ import { entries } from "@/lib/db/schema";
 import { embed } from "@/lib/openai";
 
 export type RagEntry = {
+  id: string;
   content: string;
   type: string;
   themes: string[] | null;
@@ -31,6 +32,7 @@ export async function searchEntries(
     const similarity = sql<number>`1 - (${cosineDistance(entries.embedding, qv)})`;
     return await db
       .select({
+        id: entries.id,
         content: entries.content,
         type: entries.type,
         themes: entries.themes,

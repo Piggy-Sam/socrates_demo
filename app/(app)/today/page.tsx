@@ -5,7 +5,7 @@
 // No streaks, no counts-as-pressure, no "you're on a roll." Just an invitation.
 
 import Link from "next/link";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { ArrowRight, PenLine } from "lucide-react";
 import { db } from "@/lib/db/client";
 import { entries, summaries } from "@/lib/db/schema";
@@ -70,7 +70,7 @@ function timeReadout(d: Date): string {
 export default async function TodayPage() {
   const { userId, profile } = await requireProfile();
 
-  const [latestSummaryRows, recentEntries] = await Promise.all([
+  const [latestSummaryRows, recentEntries, openQuestions] = await Promise.all([
     db
       .select()
       .from(summaries)
@@ -83,6 +83,14 @@ export default async function TodayPage() {
       .where(eq(entries.userId, userId))
       .orderBy(desc(entries.createdAt))
       .limit(5),
+    // a few recent open questions to revisit — not a backlog, just an invitation
+    // to press on what you left half-asked (no resolution-tracking metric)
+    db
+      .select()
+      .from(entries)
+      .where(and(eq(entries.userId, userId), eq(entries.type, "question")))
+      .orderBy(desc(entries.createdAt))
+      .limit(3),
   ]);
 
   const latestSummary: Summary | undefined = latestSummaryRows[0];
@@ -184,6 +192,34 @@ export default async function TodayPage() {
                 <p className="font-sans text-lg leading-relaxed text-marble text-pretty">
                   {e.content}
                 </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {/* still open — a quiet way back into the questions you left half-asked.
+          Each one carries into thinking (the same close-the-loop the bank uses).
+          Not a backlog, not a count to clear — just an invitation to press on. */}
+      {openQuestions.length > 0 ? (
+        <section className="border-t border-hairline py-9">
+          <p className="label-mono mb-5">Still open</p>
+          <ul className="space-y-6">
+            {openQuestions.map((q: Entry) => (
+              <li key={q.id}>
+                <p className="font-sans text-lg leading-relaxed text-marble text-pretty">
+                  {q.content}
+                </p>
+                <Link
+                  href={`/chat?from=${encodeURIComponent(q.id)}`}
+                  className="label-mono group mt-2 inline-flex items-center gap-1.5 text-marble-dim transition-colors hover:text-accent"
+                >
+                  Press on this
+                  <ArrowRight
+                    className="size-3.5 transition-transform group-hover:translate-x-0.5"
+                    strokeWidth={1.6}
+                  />
+                </Link>
               </li>
             ))}
           </ul>
