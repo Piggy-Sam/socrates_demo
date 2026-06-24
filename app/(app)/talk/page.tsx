@@ -12,10 +12,12 @@ export default async function TalkPage() {
   const { profile } = await requireProfile();
 
   // The voice surface is full-bleed. The authenticated shell wraps children in a
-  // padded, max-w-6xl <main>; we break out of that padding so Socrates' presence
-  // fills the field edge-to-edge (the one mobile-first, full-presence surface).
+  // padded, max-w-6xl <main>; we break out of the HORIZONTAL padding so Socrates'
+  // presence fills the field edge-to-edge. We deliberately keep the vertical
+  // padding (no -my hack): CallSurface derives its own height from --nav-h and
+  // owns its safe-area insets, so the live controls always stay above the fold.
   return (
-    <div className="-mx-5 -my-8 sm:-mx-8 sm:-my-10">
+    <div className="-mx-5 sm:-mx-8">
       <CallScreen displayName={profile.displayName ?? "friend"} />
     </div>
   );

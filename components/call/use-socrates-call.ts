@@ -14,7 +14,15 @@ export type CallPhase =
   | "ended" // we hung up / the agent left
   | "error"; // something went wrong (mic denied, token fail, …)
 
-export type LiveCaption = { role: "user" | "socrates"; text: string };
+export type LiveCaption = {
+  /** Stable per-turn id so captions animate in place instead of by-text. */
+  id: number;
+  role: "user" | "socrates";
+  text: string;
+};
+
+// How many recent turns the caption band keeps in its rolling buffer.
+const CAPTION_BUFFER = 3;
 
 export type SocratesCall = {
   phase: CallPhase;
@@ -25,6 +33,8 @@ export type SocratesCall = {
   isMuted: boolean;
   /** The most recent turn, for minimal live captions. */
   lastMessage: LiveCaption | null;
+  /** A short rolling buffer of recent turns (oldest → newest). */
+  messages: LiveCaption[];
   /** Warm, user-facing error copy (never raw SDK strings). */
   error: string | null;
   start: () => Promise<void>;
@@ -42,7 +52,11 @@ export type SocratesCall = {
 export function useSocratesCall(): SocratesCall {
   const [phase, setPhase] = useState<CallPhase>("idle");
   const [error, setError] = useState<string | null>(null);
-  const [lastMessage, setLastMessage] = useState<LiveCaption | null>(null);
+  // A short rolling buffer of recent turns; lastMessage is just its tail.
+  const [messages, setMessages] = useState<LiveCaption[]>([]);
+  // Monotonic turn id so captions key on identity, not text (lets a turn
+  // animate in place and avoids flicker on fast exchanges).
+  const turnIdRef = useRef(0);
   // Guards double-start (e.g. impatient taps) while the token is in flight.
   const startingRef = useRef(false);
 
@@ -59,7 +73,17 @@ export function useSocratesCall(): SocratesCall {
     onMessage: ({ message, source }) => {
       const text = message?.trim();
       if (!text) return;
-      setLastMessage({ role: source === "ai" ? "socrates" : "user", text });
+      const role: LiveCaption["role"] = source === "ai" ? "socrates" : "user";
+      setMessages((prev) => {
+        const last = prev[prev.length - 1];
+        // Same speaker continuing → update that turn in place (so a growing
+        // line keeps its id), otherwise push a fresh turn.
+        const next =
+          last && last.role === role
+            ? [...prev.slice(0, -1), { ...last, text }]
+            : [...prev, { id: ++turnIdRef.current, role, text }];
+        return next.slice(-CAPTION_BUFFER);
+      });
     },
     onError: (message) => {
       console.error("[socrates-call] conversation error", message);
@@ -78,7 +102,7 @@ export function useSocratesCall(): SocratesCall {
     }
     startingRef.current = true;
     setError(null);
-    setLastMessage(null);
+    setMessages([]);
     setPhase("connecting");
 
     // 1) Mint a conversation token server-side (keeps the API key secret).
@@ -176,7 +200,8 @@ export function useSocratesCall(): SocratesCall {
     starState: deriveStarState(phase, status, isSpeaking),
     isSpeaking,
     isMuted,
-    lastMessage,
+    lastMessage: messages[messages.length - 1] ?? null,
+    messages,
     error,
     start,
     end,
