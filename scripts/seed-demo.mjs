@@ -45,6 +45,11 @@ const USER_ID =
   process.env.DEMO_USER_ID ||
   "2c4b25ff-009e-4748-8e06-fe2f9436709b"; // dedicated demo account (provision-demo)
 
+// The owner's real account keeps the real name; the public demo account is
+// anonymized to "Human" so the persona isn't exposed to judges/visitors.
+const OWNER_ID = "c996ad01-7f17-4c11-8c1d-d65baf4249e3";
+const NAME = USER_ID === OWNER_ID ? "Yancun" : "Human";
+
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -77,7 +82,7 @@ const EMB_MODEL =
 console.log("seed-demo — about to do the following:");
 console.log(`  • target user: ${USER_ID}`);
 console.log("  • DELETE all of that user's patterns/summaries/themes/entries/messages/sessions");
-console.log("  • UPDATE (or insert) the profile: display_name=Yancun, tz=Asia/Singapore, daily_call_time=21:00 (phone preserved)");
+console.log(`  • UPDATE (or insert) the profile: display_name=${NAME}, tz=Asia/Singapore, daily_call_time=21:00 (phone preserved)`);
 console.log("  • SEED ~11 sessions, ~40 entries (embedded), themes, daily summaries, weekly recaps, patterns");
 console.log("  • embedding model:", EMB_MODEL);
 console.log("");
@@ -362,7 +367,7 @@ const SESSIONS = [
       ),
       turn(
         "agent",
-        "Now two of us know. Goodnight, Yancun.",
+        `Now two of us know. Goodnight, ${NAME}.`,
       ),
     ],
   },
@@ -1004,9 +1009,9 @@ async function main() {
   //    On insert (no row yet), phone is left NULL.
   const prof = await sql`
     insert into profiles (id, display_name, timezone, daily_call_time)
-    values (${USER_ID}, 'Yancun', 'Asia/Singapore', '21:00')
+    values (${USER_ID}, ${NAME}, 'Asia/Singapore', '21:00')
     on conflict (id) do update set
-      display_name = 'Yancun',
+      display_name = ${NAME},
       timezone = 'Asia/Singapore',
       daily_call_time = '21:00'
     returning (xmax = 0) as inserted, phone_e164`;
