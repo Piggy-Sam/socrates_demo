@@ -22,25 +22,27 @@ import { useReducedMotion } from "motion/react";
 // Punchy, on-brand, deliberately varied — maieutic / the examined life /
 // anti-answer-engine / your-own-cognition. Kept short enough to sit inline after
 // the prefix at the tagline scale. The first entry is the stable SSR anchor.
+// Kept short (≤ ~18 chars) so the prefix + phrase always sit on ONE line at the
+// tagline scale without wrapping or overflowing the hero column.
 const PHRASES = [
   "human cognition",
   "your own thinking",
-  "your shower thoughts",
-  "your midnight catharsis",
-  "the birth of an idea",
-  "your half-formed hunches",
-  "what you actually believe",
+  "shower thoughts",
+  "midnight catharsis",
+  "the birth of ideas",
+  "half-baked hunches",
+  "what you believe",
   "the examined life",
   "your 2am clarity",
-  "your better second thought",
-  "the thought you can't name",
-  "your unfinished reasoning",
-  "the argument with yourself",
-  "thinking that stays yours",
-  "the question under it all",
-  "your own slow conclusions",
-  "the hunch you keep circling",
-  "a mind examining itself",
+  "second thoughts",
+  "an unnamed thought",
+  "the inner argument",
+  "loose reasoning",
+  "the real question",
+  "a recurring hunch",
+  "the doubt you keep",
+  "slow conclusions",
+  "the mind on itself",
 ] as const;
 
 // Rows rendered above and below the centred phrase. We keep 2 each side and let
