@@ -1,7 +1,19 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { wave, mix, rgba, readRGBVar, type RGB } from "@/lib/dots";
+import {
+  wave,
+  mix,
+  mixInto,
+  readRGBVar,
+  fillBucket,
+  fillStyleForBucket,
+  type RGB,
+} from "@/lib/dots";
+
+// Render at ~45fps even on 120Hz ProMotion — motion is time-parameterized, so
+// the capped cadence is invisible but halves the cost on those panels.
+const FRAME_MS = 22;
 
 export type StarState =
   | "idle"
@@ -81,6 +93,9 @@ export function BreathingStar({
   const levelRef = useRef(level);
   stateRef.current = state;
   levelRef.current = Math.max(0, Math.min(1, level));
+  // the draw effect installs a "wake" callback here so a state change can
+  // restart a parked (settled) loop without re-running the whole effect.
+  const wakeRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     const canvas = ref.current;
@@ -93,11 +108,19 @@ export function BreathingStar({
     ).matches;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     let raf = 0;
+    let lastDraw = 0; // frame-budget gate (ProMotion guard)
+    let onScreen = true; // IntersectionObserver gate
+    let settledState: StarState | null = null; // state we've parked on (no RAF)
     const start = performance.now();
     let accent: RGB = [77, 124, 255];
     const readColors = () => {
       accent = readRGBVar("--accent-rgb", accent);
     };
+
+    // Per-frame fill batching: colour+alpha bucket → [x,y,r,…]. One fillStyle
+    // per bucket, no per-dot string allocation. Reused across frames.
+    const buckets = new Map<number, number[]>();
+    const col: RGB = [0, 0, 0]; // scratch for mixInto
 
     const cells: { gx: number; gy: number; rr: number }[] = [];
     for (let j = 0; j < N; j++)
@@ -113,47 +136,87 @@ export function BreathingStar({
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
 
-    const frame = (t: number) => {
+    // draws one frame, returns the frame's summed energy (used to detect when a
+    // settling state has gone effectively still)
+    const frame = (t: number): number => {
       const st = stateRef.current;
       const lvl = levelRef.current;
       const ch = CHAR[st];
       ctx.clearRect(0, 0, size, size);
+      for (const arr of buckets.values()) arr.length = 0; // reuse, no realloc
       const step = (size * 0.84) / (N - 1);
       const ox = size / 2 - C * step * ch.scale;
       const oy = size / 2 - C * step * ch.scale;
       const baseR = size * 0.026;
       const lit = mix(accent, [255, 255, 255], 0.35);
 
+      let sumE = 0;
       for (const { gx, gy, rr } of cells) {
         const e = energy(st, rr, gx, gy, t);
+        sumE += e;
         const x = ox + gx * step * ch.scale;
         const y = oy + gy * step * ch.scale;
         const boost = (st === "speaking" || st === "listening") ? lvl * 0.2 : 0;
         const radius = baseR * (0.4 + 1.05 * e) * ch.scale;
         const alpha = Math.min(1, (0.18 + 0.82 * e) * ch.bright + boost);
+        mixInto(col, accent, lit, e * 0.4);
+        const key = fillBucket(col[0], col[1], col[2], alpha);
+        let arr = buckets.get(key);
+        if (!arr) { arr = []; buckets.set(key, arr); }
+        arr.push(x, y, radius);
+      }
+      // one fillStyle assignment + one fill() per colour bucket
+      for (const [key, arr] of buckets) {
+        if (arr.length === 0) continue;
+        ctx.fillStyle = fillStyleForBucket(key);
         ctx.beginPath();
-        ctx.arc(x, y, radius, 0, 6.2832);
-        ctx.fillStyle = rgba(mix(accent, lit, e * 0.4), alpha);
+        for (let k = 0; k < arr.length; k += 3) {
+          ctx.moveTo(arr[k] + arr[k + 2], arr[k + 1]);
+          ctx.arc(arr[k], arr[k + 1], arr[k + 2], 0, 6.2832);
+        }
         ctx.fill();
       }
+      return sumE;
     };
 
+    let prevSum = NaN;
     const loop = (now: number) => {
-      frame((now - start) / 1000);
       raf = requestAnimationFrame(loop);
-    };
+      // frame-budget gate: ~45fps regardless of panel refresh; motion is
+      // time-based, so the capped cadence is pixel-equivalent.
+      if (now - lastDraw < FRAME_MS) return;
+      lastDraw = now;
 
-    // pause the RAF loop while the tab is hidden (saves CPU/battery); resume
-    // seamlessly when visible. Reduced-motion stays static throughout.
-    const onVisibility = () => {
-      if (reduce) return;
-      if (document.hidden) {
+      const st = stateRef.current;
+      const sum = frame((now - start) / 1000);
+      // the "ended" state settles to a near-still, dim glow; once the mean
+      // per-dot energy delta is negligible, park the RAF (it restarts on any
+      // stateRef change via wakeRef). Breathing states (idle/listening/speaking/
+      // thinking) oscillate forever, so they keep animating.
+      const meanDelta = Number.isNaN(prevSum)
+        ? Infinity
+        : Math.abs(sum - prevSum) / cells.length;
+      if (st === "ended" && meanDelta < 0.0008) {
         cancelAnimationFrame(raf);
         raf = 0;
-      } else if (!raf) {
-        raf = requestAnimationFrame(loop);
+        settledState = st;
+      }
+      prevSum = sum;
+    };
+
+    // Run only when the tab is visible AND the orb is on-screen. Reduced-motion
+    // stays static. A parked "settled" state is left parked here.
+    const shouldRun = () =>
+      !reduce && !document.hidden && onScreen && settledState === null;
+    const sync = () => {
+      if (shouldRun()) {
+        if (!raf) { lastDraw = 0; raf = requestAnimationFrame(loop); }
+      } else if (raf) {
+        cancelAnimationFrame(raf);
+        raf = 0;
       }
     };
+    const onVisibility = sync;
 
     readColors();
     setup();
@@ -162,20 +225,48 @@ export function BreathingStar({
       attributes: true,
       attributeFilter: ["data-theme"],
     });
+    const io = new IntersectionObserver(
+      (entries) => {
+        onScreen = entries[entries.length - 1].intersectionRatio > 0;
+        if (!reduce) sync();
+      },
+      { threshold: 0 },
+    );
+    io.observe(canvas);
+
+    // a state change (from the sibling effect below) may need to wake a parked
+    // loop (e.g. leaving "ended") or refresh the static reduced-motion frame.
+    wakeRef.current = () => {
+      prevSum = NaN;
+      if (settledState !== null && stateRef.current !== settledState) {
+        settledState = null;
+      }
+      if (reduce) frame(0);
+      else sync();
+    };
 
     if (reduce) {
       frame(0);
     } else {
       document.addEventListener("visibilitychange", onVisibility);
-      if (!document.hidden) raf = requestAnimationFrame(loop);
+      sync();
     }
 
     return () => {
       cancelAnimationFrame(raf);
       mo.disconnect();
+      io.disconnect();
+      wakeRef.current = () => {};
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [size]);
+
+  // Wake the draw loop when the state changes (the main effect is keyed only on
+  // `size` so the canvas/setup persists; this nudges a parked "ended" loop back
+  // to life and re-renders the static reduced-motion frame).
+  useEffect(() => {
+    wakeRef.current();
+  }, [state]);
 
   return (
     <canvas

@@ -38,8 +38,62 @@ export function mix(c1: RGB, c2: RGB, k: number): RGB {
   ];
 }
 
+/**
+ * In-place linear mix of two colours into a caller-owned scratch tuple. Same
+ * math as mix() but allocates nothing — the hot draw loops reuse one `out`
+ * array per frame instead of minting a fresh RGB (and string) per dot. Returns
+ * `out` for chaining.
+ */
+export function mixInto(out: RGB, c1: RGB, c2: RGB, k: number): RGB {
+  out[0] = c1[0] + (c2[0] - c1[0]) * k;
+  out[1] = c1[1] + (c2[1] - c1[1]) * k;
+  out[2] = c1[2] + (c2[2] - c1[2]) * k;
+  return out;
+}
+
 export function rgba([r, g, b]: RGB, a: number): string {
   return `rgba(${r | 0},${g | 0},${b | 0},${a})`;
+}
+
+// Colour + alpha are quantized into a small fixed set of buckets so the draw
+// loops assign ctx.fillStyle once per non-empty bucket (a few dozen) instead of
+// once per dot, and the rgba() string for each bucket is built once and cached
+// for the lifetime of the process. The steps are below perceptual threshold
+// against the faint dot field — and alpha rounds UP (ceil) so any dot the
+// callers already chose to draw never quantizes down to invisible.
+const ALPHA_STEPS = 32; // alpha quantized to 1/32nds (6-bit)
+const fillCache = new Map<number, string>();
+
+/**
+ * Quantize (integer r,g,b, alpha 0..1) to a stable bucket key. r/g/b are masked
+ * to 5 bits each (32 levels); alpha to ALPHA_STEPS (6 bits), rounded up so a
+ * visible dot never collapses to alpha 0. Identical inputs map to one key so
+ * callers can batch fills per bucket. Bit layout: r<<17 | g<<12 | b<<6 | a.
+ */
+export function fillBucket(r: number, g: number, b: number, a: number): number {
+  const rq = (r < 0 ? 0 : r > 255 ? 255 : r) >> 3;
+  const gq = (g < 0 ? 0 : g > 255 ? 255 : g) >> 3;
+  const bq = (b < 0 ? 0 : b > 255 ? 255 : b) >> 3;
+  const aq = Math.ceil((a < 0 ? 0 : a > 1 ? 1 : a) * ALPHA_STEPS);
+  return ((rq << 17) | (gq << 12) | (bq << 6) | aq) >>> 0;
+}
+
+/** Build (and cache) the rgba() string for a bucket key from fillBucket(). */
+export function fillStyleForBucket(key: number): string {
+  let s = fillCache.get(key);
+  if (s !== undefined) return s;
+  const aq = key & 0x3f;
+  const bq = (key >> 6) & 0x1f;
+  const gq = (key >> 12) & 0x1f;
+  const rq = (key >> 17) & 0x1f;
+  // de-quantize to channel midpoints (×8, +4) and alpha back to 0..1
+  const r = (rq << 3) | 4;
+  const g = (gq << 3) | 4;
+  const b = (bq << 3) | 4;
+  const a = aq / ALPHA_STEPS;
+  s = `rgba(${r},${g},${b},${a})`;
+  fillCache.set(key, s);
+  return s;
 }
 
 /** smoothstep 0..1 */
