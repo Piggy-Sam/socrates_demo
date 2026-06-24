@@ -49,6 +49,10 @@ const USER_ID =
 // anonymized to "Human" so the persona isn't exposed to judges/visitors.
 const OWNER_ID = "c996ad01-7f17-4c11-8c1d-d65baf4249e3";
 const NAME = USER_ID === OWNER_ID ? "Yancun" : "Human";
+// The owner keeps their real (Twilio-verified) phone — never overwrite it. The
+// demo account gets a mock number so /today shows the "Call me now" button (which
+// then opens the cheeky "no Twilio budget" pop-up); null here = "preserve".
+const PHONE = USER_ID === OWNER_ID ? null : "+6588888888";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -1008,15 +1012,17 @@ async function main() {
   // 2) UPSERT the profile — set the three demo fields, PRESERVE phone_e164.
   //    On insert (no row yet), phone is left NULL.
   const prof = await sql`
-    insert into profiles (id, display_name, timezone, daily_call_time)
-    values (${USER_ID}, ${NAME}, 'Asia/Singapore', '21:00')
+    insert into profiles (id, display_name, timezone, daily_call_time, phone_e164)
+    values (${USER_ID}, ${NAME}, 'Asia/Singapore', '21:00', ${PHONE})
     on conflict (id) do update set
       display_name = ${NAME},
       timezone = 'Asia/Singapore',
-      daily_call_time = '21:00'
+      daily_call_time = '21:00',
+      -- demo gets the mock number; owner (PHONE null) keeps their real one
+      phone_e164 = coalesce(${PHONE}, profiles.phone_e164)
     returning (xmax = 0) as inserted, phone_e164`;
   console.log(
-    `  profile ${prof[0].inserted ? "inserted" : "updated"} (phone_e164 preserved: ${prof[0].phone_e164 ?? "NULL"})`,
+    `  profile ${prof[0].inserted ? "inserted" : "updated"} (phone_e164: ${prof[0].phone_e164 ?? "NULL"})`,
   );
 
   // 3a) Insert sessions; remember their ids by key.
