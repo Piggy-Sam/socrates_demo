@@ -29,7 +29,7 @@ export function AppNav({ displayName }: { displayName?: string | null }) {
   return (
     <header className="sticky top-0 z-40 border-b border-hairline bg-ink/80 backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-3 px-5 py-3.5 sm:px-8">
-        <Wordmark size="sm" />
+        <Wordmark size="sm" staticCursor />
 
         <nav className="order-3 flex items-center gap-0.5 sm:order-2 sm:ml-2">
           {LINKS.map((l) => {

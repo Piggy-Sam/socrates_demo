@@ -121,25 +121,32 @@ export function CallMeNow({
         onClick={trigger}
         disabled={calling}
         aria-busy={calling}
+        className="whitespace-nowrap"
       >
-        {calling ? (
-          <>
-            <motion.span
-              aria-hidden
-              className="inline-block"
-              animate={reduce ? {} : { rotate: [0, 14, -14, 0] }}
-              transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut" }}
-            >
-              <Phone className="size-4" strokeWidth={1.6} />
-            </motion.span>
-            Placing the call…
-          </>
-        ) : (
-          <>
-            <Phone className="size-4" strokeWidth={1.6} />
-            Call me now
-          </>
-        )}
+        {/* One stable icon in both states — rotation only while calling, so the
+            phone never duplicates or jumps as the label swaps. */}
+        <motion.span
+          aria-hidden
+          className="inline-block"
+          animate={calling && !reduce ? { rotate: [0, 14, -14, 0] } : { rotate: 0 }}
+          transition={
+            calling && !reduce
+              ? { duration: 0.9, repeat: Infinity, ease: "easeInOut" }
+              : { duration: 0 }
+          }
+        >
+          <Phone className="size-4" strokeWidth={1.6} />
+        </motion.span>
+        {/* Single label whose text content switches — a brief crossfade keyed on
+            the state, no two stacked fragments to overlap or thrash the width. */}
+        <motion.span
+          key={calling ? "calling" : "idle"}
+          initial={reduce ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: reduce ? 0 : 0.18 }}
+        >
+          {calling ? "Placing the call…" : "Call me now"}
+        </motion.span>
       </Button>
       {status === "error" && message && (
         <p className="font-sans text-sm text-marble-dim text-pretty">

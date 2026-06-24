@@ -24,6 +24,8 @@
   --accent-strong: #0a4fd6; /* hover / active */
   --accent-btn: #0f62fe; /* solid-fill for white text — AA (5:1) */
 
+  --danger: #d92d3a; /* the lone destructive red — cool-leaning, sits with the blue */
+
   /* aliases — legacy utilities (text-gold, .glow-gold, text-cyan) auto-flip */
   --gold: var(--accent);
   --gold-lit: var(--accent-strong);
@@ -59,6 +61,8 @@
   --accent-strong: #7fa2ff;
   --accent-btn: #3a63e0; /* darker solid-fill so white text hits AA on dark */
 
+  --danger: #ff6b72; /* lifted red for contrast on dark, still cool-leaning */
+
   --gold: var(--accent);
   --gold-lit: var(--accent-strong);
   --cyan: var(--accent);
@@ -90,6 +94,7 @@
   --color-accent: var(--accent);
   --color-accent-strong: var(--accent-strong);
   --color-accent-btn: var(--accent-btn);
+  --color-danger: var(--danger);
   /* legacy aliases so existing utilities keep compiling + now render blue */
   --color-gold: var(--accent);
   --color-gold-lit: var(--accent-strong);

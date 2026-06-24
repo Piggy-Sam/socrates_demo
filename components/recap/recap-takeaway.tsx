@@ -1,19 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Check, Copy, Download } from "lucide-react";
 
 // Quiet take-away controls for a rendered recap — the thinking stays yours.
 // Copy puts the recap's own markdown on the clipboard; Download builds a Blob
 // and triggers a .md download. Hairline + FIG mono, restrained — not buttons
 // that shout. Reuses the recap's already-assembled markdown (`content`).
+//
+// `trailing` is an optional slot (e.g. a regenerate control) that sits at the
+// far end of the same quiet row — present only for a persisted recap.
 
 export function RecapTakeaway({
   content,
   filename = "socrates-recap.md",
+  trailing,
 }: {
   content: string;
   filename?: string;
+  trailing?: ReactNode;
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -40,7 +45,7 @@ export function RecapTakeaway({
   }
 
   return (
-    <div className="mt-8 flex items-center gap-5 border-t border-hairline pt-5">
+    <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-hairline pt-5">
       <p className="label-mono text-marble-dim/70">Yours to take</p>
       <div className="flex items-center gap-4">
         <button
@@ -64,6 +69,7 @@ export function RecapTakeaway({
           download .md
         </button>
       </div>
+      {trailing ? <div className="ml-auto">{trailing}</div> : null}
     </div>
   );
 }

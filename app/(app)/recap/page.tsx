@@ -7,6 +7,7 @@ import { summaries } from "@/lib/db/schema";
 import { GenerateRecap } from "@/components/recap/generate-recap";
 import { renderRecap } from "@/components/recap/render-recap";
 import { RecapTakeaway } from "@/components/recap/recap-takeaway";
+import { RegenerateRecap } from "@/components/recap/regenerate-recap";
 import { PageHeader } from "@/components/ui/page-header";
 
 // The weekly recap — a reflective letter from Socrates over a week's thoughts,
@@ -86,7 +87,15 @@ export default async function RecapPage({
           <article className="border-l border-hairline pl-6 font-sans sm:pl-8">
             {renderRecap(recap.content)}
           </article>
-          <RecapTakeaway content={recap.content} />
+          <RecapTakeaway
+            content={recap.content}
+            trailing={
+              <RegenerateRecap
+                periodStart={new Date(recap.periodStart).toISOString()}
+                periodEnd={new Date(recap.periodEnd).toISOString()}
+              />
+            }
+          />
         </section>
       ) : (
         <section className="rounded-md border border-hairline bg-raised p-8 sm:p-10">
