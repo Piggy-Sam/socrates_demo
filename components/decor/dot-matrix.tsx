@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { chaos, mix, rgba, smooth, readRGBVar, type RGB } from "@/lib/dots";
+import { chaos, mix, rgba, smooth, sampleJolts, readRGBVar, type RGB } from "@/lib/dots";
 
 type Props = {
   className?: string;
@@ -30,6 +30,9 @@ export function DotMatrix({ className = "", spacing = 30, intensity = 1 }: Props
     let w = 0, h = 0, cols = 0, rows = 0, raf = 0;
     const start = performance.now();
     const ptr = { x: -9999, y: -9999, tx: -9999, ty: -9999, active: false };
+    // jolts arrive in viewport coords; cache the canvas's viewport offset so we
+    // can map each local dot back to viewport space when sampling them.
+    const off = { x: 0, y: 0 };
     let accent: RGB = [15, 98, 254];
     let lit: RGB = [120, 170, 255];
     const readColors = () => {
@@ -43,12 +46,15 @@ export function DotMatrix({ className = "", spacing = 30, intensity = 1 }: Props
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       S = w < 700 ? 14 : 19; // dense, especially on mobile
       cols = Math.ceil(w / S) + 1; rows = Math.ceil(h / S) + 1;
+      const rect = canvas.getBoundingClientRect();
+      off.x = rect.left; off.y = rect.top;
       if (reduce) draw(0);
     };
 
     const GR = 240; // larger, gentler glow
     const draw = (now: number) => {
       const t = (now - start) / 1000;
+      const wall = now / 1000; // wall-clock secs — jolt timestamps live here
       ptr.x += (ptr.tx - ptr.x) * 0.12;
       ptr.y += (ptr.ty - ptr.y) * 0.12;
       ctx.clearRect(0, 0, w, h);
@@ -67,6 +73,17 @@ export function DotMatrix({ className = "", spacing = 30, intensity = 1 }: Props
               radius += fe * 1.6 * ent;
               alpha += fe * 0.28 * ent;
               colorK = Math.min(1, colorK + fe * 0.55);
+            }
+          }
+          // injected impulse (CTA jolt etc.) — an expanding ring of energy that
+          // only adds size/opacity/colour, never moves a dot. Reduced-motion
+          // already gates emitJolt at the source, so this is dormant there.
+          if (!reduce) {
+            const jolt = sampleJolts(x + off.x, y + off.y, wall);
+            if (jolt > 0) {
+              radius += jolt * 2 * e;
+              alpha += jolt * 0.35 * e;
+              colorK = Math.min(1, colorK + jolt * 0.5);
             }
           }
           const fa = Math.min(0.85, alpha) * intensity;

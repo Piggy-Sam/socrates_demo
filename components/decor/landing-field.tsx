@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { BUST_FACE } from "@/components/brand/bust-dots";
-import { chaos, mix, rgba, smooth, readRGBVar, type RGB } from "@/lib/dots";
+import { chaos, mix, rgba, smooth, sampleJolts, readRGBVar, type RGB } from "@/lib/dots";
 
 type Props = {
   /** id of the element marking where the face emerges (the hero's left cell) */
@@ -35,6 +35,9 @@ export function LandingField({ faceId, className = "", spacing = 22 }: Props) {
     const start = performance.now();
 
     const ptr = { x: -9999, y: -9999, tx: -9999, ty: -9999, active: false };
+    // jolts arrive in viewport coords; cache the canvas's viewport offset so we
+    // can map each local dot back to viewport space when sampling them.
+    const off = { x: 0, y: 0 };
     let accent: RGB = [15, 98, 254];
     let marble: RGB = [11, 15, 26];
     const readColors = () => {
@@ -82,6 +85,8 @@ export function LandingField({ faceId, className = "", spacing = 22 }: Props) {
       // dense lattice, especially on mobile (higher face resolution)
       S = w < 700 ? 11 : 15;
       cols = Math.ceil(w / S) + 1; rows = Math.ceil(h / S) + 1;
+      const rect = canvas.getBoundingClientRect();
+      off.x = rect.left; off.y = rect.top;
       measure(); // canvas size changed → face position / maxD changed
     };
 
@@ -99,6 +104,7 @@ export function LandingField({ faceId, className = "", spacing = 22 }: Props) {
 
     const draw = (now: number) => {
       const t = (now - start) / 1000;
+      const wall = now / 1000; // wall-clock secs — jolt timestamps live here
       stepMorph(t);
       ptr.x += (ptr.tx - ptr.x) * 0.12;
       ptr.y += (ptr.ty - ptr.y) * 0.12;
@@ -165,6 +171,18 @@ export function LandingField({ faceId, className = "", spacing = 22 }: Props) {
               radius += fe * 1.7 * ent;
               alpha += fe * 0.3 * ent;
               color = mix(color, lit, fe * 0.45);
+            }
+          }
+
+          // injected impulse (CTA jolt etc.) — an expanding ring of energy that
+          // only adds size/opacity/colour, never moves a dot. emitJolt is gated
+          // on reduced-motion at the source, so this stays dormant there.
+          if (!reduce) {
+            const jolt = sampleJolts(X + off.x, Y + off.y, wall);
+            if (jolt > 0) {
+              radius += jolt * 2 * ce;
+              alpha += jolt * 0.35 * ce;
+              color = mix(color, lit, Math.min(1, jolt * 0.5));
             }
           }
 
