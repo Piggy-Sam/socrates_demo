@@ -110,8 +110,9 @@ export default function Home() {
             </h1>
 
             {/* the core line — one crisp sentence so a first-time visitor
-                instantly gets it, sitting between the tagline wheel and the CTAs */}
-            <p className="mt-6 max-w-xl font-display text-lg font-light leading-relaxed tracking-tight text-marble text-pretty animate-[fade-rise_0.7s_var(--ease-instrument)_0.15s_both] sm:text-xl">
+                instantly gets it, sitting between the tagline wheel and the CTAs.
+                Sized to sit on a single line in the hero. */}
+            <p className="mt-5 font-display text-sm font-light leading-relaxed tracking-tight text-marble animate-[fade-rise_0.7s_var(--ease-instrument)_0.15s_both] sm:text-base">
               AI that sharpens your thinking instead of replacing it.
             </p>
 

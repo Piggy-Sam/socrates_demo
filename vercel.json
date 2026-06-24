@@ -5,6 +5,10 @@
     {
       "path": "/api/cron/daily",
       "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/cron/float-demo",
+      "schedule": "5 16 * * *"
     }
   ]
 }
