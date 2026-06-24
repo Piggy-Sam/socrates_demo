@@ -46,6 +46,26 @@ export default async function BankPage() {
       />
 
       <BankView entries={bankEntries} />
+
+      {/* Anti-lock-in — the thinking stays yours. Quiet hairline footer; the
+          .md export is plain markdown, ?format=json for true portability. */}
+      <footer className="mt-12 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-hairline pt-5">
+        <p className="label-mono text-marble-dim/70">
+          Your thinking is yours to take
+        </p>
+        <a
+          href="/api/export/bank"
+          className="label-mono text-marble-dim transition-colors hover:text-accent"
+        >
+          export the bank (.md)
+        </a>
+        <a
+          href="/api/export/bank?format=json"
+          className="label-mono text-marble-dim/70 transition-colors hover:text-accent"
+        >
+          json
+        </a>
+      </footer>
     </div>
   );
 }

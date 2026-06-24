@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useReducedMotion, motion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { renderRecap } from "./render-recap";
+import { RecapTakeaway } from "./recap-takeaway";
 
 /**
  * On-demand weekly recap. Calls POST /api/recap/generate and renders the
@@ -57,6 +58,7 @@ export function GenerateRecap() {
         className="border-l border-hairline pl-6 font-sans sm:pl-8"
       >
         {renderRecap(content)}
+        <RecapTakeaway content={content} />
       </motion.article>
     );
   }
