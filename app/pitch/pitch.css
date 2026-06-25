@@ -38,8 +38,13 @@
     display: none !important;
   }
 
-  /* Kill the track transform + clipping: let slides flow as stacked pages. */
+  /* The deck root is h-dvh + overflow-hidden on screen (clips to one slide). Open
+     it AND the viewport up so the stacked slides flow across pages — without this
+     the whole deck prints as a single clipped page. */
+  .deck-root,
   .deck-viewport {
+    height: auto !important;
+    min-height: 0 !important;
     overflow: visible !important;
   }
   .deck-track {
