@@ -73,7 +73,7 @@ export function PitchDeck() {
   }, [next, prev, go]);
 
   return (
-    <div className="relative h-dvh w-screen overflow-hidden">
+    <div className="deck-root relative h-dvh w-screen overflow-hidden">
       {/* The viewport clips the track to one slide on screen; in print it opens
           up and the track flows as stacked pages (see pitch.css). */}
       <div className="deck-viewport h-full w-full overflow-hidden">
